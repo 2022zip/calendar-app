@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>新增日程</title>
+    <link rel="stylesheet" href="add_event.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="index.html" class="cancel-btn">取消</a>
+            <span>新增日程</span>
+            <a href="#" class="add-btn" id="add-event-button">储存</a>
+        </header>
+        <main>
+            <form class="event-form">
+                <div class="form-row">
+                    <label>标题:</label>
+                    <input type="text" id="event-title">
+                </div>
+                <div class="form-row">
+                    <label>开始:</label>
+                    <input type="text" id="start-date">
+                </div>
+                <div class="form-row">
+                    <label>结束:</label>
+                    <input type="text" id="end-date">
+                </div>
+                <div class="form-row">
+                    <label>客户量级:</label>
+                    <textarea id="customer-level"></textarea>
+                </div>
+                <div class="form-row">
+                    <label>隐性需求:</label>
+                    <textarea id="hidden-needs"></textarea>
+                </div>
+                <div class="form-row">
+                    <label>判断案情:</label>
+                    <textarea id="case-judgment"></textarea>
+                </div>
+                <div class="form-row">
+                    <label>一句话总结:</label>
+                    <textarea id="summary"></textarea>
+                </div>
+                <div class="form-row">
+                    <label>备注:</label>
+                    <textarea id="event-notes"></textarea>
+                </div>
+                <button id="depart-button-page" class="depart-button-page">出发</button>
+            </form>
+        </main>
+    </div>
+    <script src="add_event.js"></script>
+</body>
+</html>

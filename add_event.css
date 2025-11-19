@@ -1,0 +1,122 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: #f0f0f7;
+}
+
+.container {
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    background-color: #fff;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    border-bottom: 1px solid #e5e5ea;
+}
+
+header a {
+    text-decoration: none;
+    color: #007aff;
+    font-size: 16px;
+}
+
+header span {
+    font-weight: bold;
+    font-size: 17px;
+}
+
+.event-form {
+    padding: 15px;
+}
+
+.event-form input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-bottom: 1px solid #e5e5ea;
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+
+.location-input {
+    position: relative;
+}
+
+.location-input .video-icon {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 20px;
+}
+
+.form-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start; /* 改为 flex-start 以便多行文本顶部对齐 */
+    padding: 10px 0;
+    border-bottom: 1px solid #e5e5ea;
+}
+
+.form-row label {
+    font-size: 16px;
+    width: 30%; /* 为标签设置固定宽度 */
+}
+
+.form-row input[type="text"] {
+    border: none;
+    text-align: right;
+    width: 70%;
+    font-size: 16px;
+    padding-right: 12px; /* 向左缩排：给右侧留空 */
+    padding-left: 0;
+    background-color: transparent;
+    font-family: inherit;
+    box-sizing: border-box; /* 确保 padding 和 border 不会影响宽度 */
+}
+
+.form-row textarea {
+    border: none;
+    text-align: left;
+    width: 70%;
+    font-size: 16px;
+    padding-right: 0;
+    padding-left: 12px;
+    background-color: transparent;
+    font-family: inherit;
+    box-sizing: border-box; /* 确保 padding 和 border 不会影响宽度 */
+    white-space: pre-wrap; /* Preserve whitespace and newlines */
+    height: 100px; /* 为 textarea 设置一个默认高度 */
+    resize: vertical; /* 允许用户垂直调整大小 */
+}
+
+.form-row input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+}
+
+.map img {
+    width: 100%;
+}
+
+.depart-button-page {
+    background-color: #7ed321;
+    color: white;
+    border-radius: 50%;
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+    margin: 20px auto;
+}
