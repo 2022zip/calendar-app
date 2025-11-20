@@ -9,19 +9,34 @@
 <body>
     <header>
         <a href="#" class="back-btn">返回</a>
-        <h1>打卡</h1>
+        <div id="event-info">
+            <h1 id="event-title">外勤打卡</h1>
+            <p id="event-date"></p>
+        </div>
     </header>
     <main>
-        <button id="check-in-btn">到场打卡</button>
-        <p id="check-in-time"></p>
-        <button id="check-out-btn">离场打卡</button>
-        <p id="check-out-time"></p>
+        <div class="check-in-container">
+            <button id="check-in-out-btn">
+                <span id="check-in-out-text">到场打卡</span>
+                <span id="current-time"></span>
+            </button>
+        </div>
 
-        <div class="camera-container">
-            <video id="camera-stream" autoplay></video>
-            <button id="capture-btn">拍照</button>
-            <canvas id="canvas" style="display:none;"></canvas>
-            <img id="photo" />
+        <div class="photo-upload-container">
+            <h2>拍照上传区</h2>
+            <div class="photo-box">
+                <video id="camera-stream" autoplay style="display:none;"></video>
+                <canvas id="canvas" style="display:none;"></canvas>
+                <img id="photo" />
+                <button id="capture-btn" style="display:none;">拍照</button>
+            </div>
+        </div>
+
+        <div class="history-container">
+            <h2>历史打卡记录</h2>
+            <div id="history-records">
+                <p>无记录</p>
+            </div>
         </div>
     </main>
     <script src="check_in.js"></script>
