@@ -36,6 +36,106 @@ document.addEventListener('DOMContentLoaded', function () {
                 startDate: '2025年7月13日 上午9:00',
                 endDate: '2025年7月13日 上午10:00',
                 date: '2025-07-13'
+            },
+            {
+                id: 'event-3',
+                title: '惠康客诉线上会议',
+                startDate: '2025年7月9日 上午9:00',
+                endDate: '2025年7月9日 上午10:00',
+                date: '2025-07-09',
+                location: '线上'
+            },
+            {
+                id: 'event-4',
+                title: '惠康客诉会后记录与方案确认',
+                startDate: '2025年7月9日 上午10:00',
+                endDate: '2025年7月9日 上午10:30',
+                date: '2025-07-09'
+            },
+            {
+                id: 'event-5',
+                title: '前往江丰科技途中要点整理',
+                startDate: '2025年7月9日 上午10:30',
+                endDate: '2025年7月9日 上午11:10',
+                date: '2025-07-09'
+            },
+            {
+                id: 'event-6',
+                title: '江丰科技现场沟通',
+                startDate: '2025年7月9日 上午11:10',
+                endDate: '2025年7月9日 下午12:00',
+                date: '2025-07-09',
+                location: '江丰科技现场'
+            },
+            {
+                id: 'event-7',
+                title: '与王总午餐沟通',
+                startDate: '2025年7月9日 下午12:00',
+                endDate: '2025年7月9日 下午1:00',
+                date: '2025-07-09'
+            },
+            {
+                id: 'event-8',
+                title: '返回途中信息整理与致谢讯息',
+                startDate: '2025年7月9日 下午1:00',
+                endDate: '2025年7月9日 下午1:30',
+                date: '2025-07-09'
+            },
+            {
+                id: 'event-9',
+                title: '大发光纤合同条款与底线对表',
+                startDate: '2025年7月9日 下午1:30',
+                endDate: '2025年7月9日 下午2:00',
+                date: '2025-07-09'
+            },
+            {
+                id: 'event-10',
+                title: '大发光纤合同洽谈',
+                startDate: '2025年7月9日 下午2:00',
+                endDate: '2025年7月9日 下午3:00',
+                date: '2025-07-09'
+            },
+            {
+                id: 'event-11',
+                title: '大发光纤合同结果确认与后续动作安排',
+                startDate: '2025年7月9日 下午3:00',
+                endDate: '2025年7月9日 下午4:00',
+                date: '2025-07-09'
+            },
+            {
+                id: 'event-12',
+                title: '今日主要客户机会与风险盘点',
+                startDate: '2025年7月9日 下午4:00',
+                endDate: '2025年7月9日 下午5:00',
+                date: '2025-07-09'
+            },
+            {
+                id: 'event-13',
+                title: '同行业潜在客户轻触达与约访',
+                startDate: '2025年7月9日 下午5:00',
+                endDate: '2025年7月9日 下午6:00',
+                date: '2025-07-09'
+            },
+            {
+                id: 'event-14',
+                title: '晚餐与机动沟通（奥克斯电器）',
+                startDate: '2025年7月9日 下午6:00',
+                endDate: '2025年7月9日 下午7:00',
+                date: '2025-07-09'
+            },
+            {
+                id: 'event-15',
+                title: '填写日报',
+                startDate: '2025年7月9日 下午7:00',
+                endDate: '2025年7月9日 下午8:00',
+                date: '2025-07-09'
+            },
+            {
+                id: 'event-16',
+                title: '日终复盘与明日三件事规划',
+                startDate: '2025年7月9日 下午8:00',
+                endDate: '2025年7月9日 下午9:00',
+                date: '2025-07-09'
             }
         ];
 
@@ -48,7 +148,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         localStorage.setItem('events', JSON.stringify(events));
-        localStorage.setItem('migration_done', 'true');
+        localStorage.setItem('migration_done_v2', 'true');
     }
 
     function getStoredEvents() {
@@ -184,7 +284,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (event.location && (event.location.includes('现场') || event.location.includes('公司'))) {
                 const departButton = document.createElement('div');
                 departButton.classList.add('depart-button');
-                departButton.textContent = '出发';
+                departButton.textContent = '打卡';
                 departButton.addEventListener('click', (e) => {
                 e.stopPropagation(); // Prevent navigating to edit page
                 window.location.href = `depart_options.html?date=${dateStr}`;
