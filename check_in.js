@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     let stream;
-    let checkInState = 'out'; // 'in' or 'out'
+    let checkInState = 'in'; // 'in' or 'out'
 
     function updateTime() {
         const now = new Date();
@@ -40,6 +40,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function startCamera() {
+        if (stream) return;
         try {
             stream = await navigator.mediaDevices.getUserMedia({ video: true });
             cameraStream.srcObject = stream;
@@ -55,9 +56,10 @@ document.addEventListener('DOMContentLoaded', function () {
         canvas.width = cameraStream.videoWidth;
         canvas.height = cameraStream.videoHeight;
         context.drawImage(cameraStream, 0, 0, canvas.width, canvas.height);
-        photo.src = canvas.toDataURL('image/png');
+        const dataUrl = canvas.toDataURL('image/png');
+        photo.src = dataUrl;
         photo.style.display = 'block';
-        stopCamera();
+        return dataUrl;
     }
 
     function stopCamera() {
@@ -68,7 +70,7 @@ document.addEventListener('DOMContentLoaded', function () {
         captureBtn.style.display = 'none';
     }
 
-    function addHistoryRecord(type, time, photoSrc) {
+    function addHistoryRecord(type, time, photoSrc, save = true) {
         const record = document.createElement('div');
         record.classList.add('history-record');
 
@@ -95,10 +97,30 @@ document.addEventListener('DOMContentLoaded', function () {
         record.appendChild(timeline);
         record.appendChild(recordContent);
 
-        if (historyRecords.querySelector('p')) {
-            historyRecords.innerHTML = '';
+        const placeholder = document.getElementById('no-records-placeholder');
+        if (placeholder) {
+            placeholder.remove();
         }
         historyRecords.insertBefore(record, historyRecords.firstChild);
+
+        if (save) {
+            let history = JSON.parse(localStorage.getItem('checkInHistory')) || {};
+            if (!history[eventId]) {
+                history[eventId] = [];
+            }
+            history[eventId].unshift({ type, time, photoSrc });
+            localStorage.setItem('checkInHistory', JSON.stringify(history));
+        }
+    }
+
+    function loadHistoryRecords() {
+        let history = JSON.parse(localStorage.getItem('checkInHistory')) || {};
+        if (history[eventId]) {
+            const records = history[eventId];
+            records.forEach(record => {
+                addHistoryRecord(record.type, record.time, record.photoSrc, false);
+            });
+        }
     }
 
     checkInOutBtn.addEventListener('click', function () {
@@ -109,11 +131,7 @@ document.addEventListener('DOMContentLoaded', function () {
             currentTime.style.display = 'block';
             startCamera();
         } else {
-            checkInState = 'out';
-            this.classList.remove('checked-in');
-            checkInOutText.textContent = '到场打卡';
-            currentTime.style.display = 'none';
-            stopCamera();
+            startCamera();
         }
     });
 
@@ -139,18 +157,19 @@ document.addEventListener('DOMContentLoaded', function () {
             return; // Or show a message
         }
 
-        
-        takePicture();
-        addHistoryRecord(type, timeString, photo.src);
+        const photoDataUrl = takePicture();
+        addHistoryRecord(type, timeString, photoDataUrl);
     });
 
     backButton.addEventListener('click', function (event) {
         event.preventDefault();
         stopCamera();
-        window.location.href = `add_event.html?id=${eventId}&date=${date}`;
+        window.location.href = `index.html?date=${date}`;
     });
 
-    // Initial time update
+    // Set initial state to checked-out
+    checkInOutBtn.classList.remove('checked-in');
     currentTime.style.display = 'none';
+    loadHistoryRecords();
     setInterval(updateTime, 1000);
 });
