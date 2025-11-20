@@ -4,19 +4,64 @@ document.addEventListener('DOMContentLoaded', function () {
     const yearDisplay = document.querySelector('.date-selector .year');
     const monthDisplay = document.querySelector('.date-selector .month');
 
-    const today = new Date();
-    let currentYear = 2025;
-    let currentMonth = 6; // July is 6 (0-indexed)
+    let currentYear, currentMonth;
 
-    if (yearDisplay) {
-        yearDisplay.innerHTML = `&lt; ${currentYear}年`;
+    function initialize() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const dateParam = urlParams.get('date');
+        let initialDay;
+
+        if (dateParam) {
+            const parts = dateParam.split('-').map(p => parseInt(p, 10));
+            if (parts.length === 3 && !parts.some(isNaN)) {
+                currentYear = parts[0];
+                currentMonth = parts[1] - 1;
+                initialDay = parts[2];
+            } else {
+                const today = new Date();
+                currentYear = today.getFullYear();
+                currentMonth = today.getMonth();
+                initialDay = today.getDate();
+            }
+        } else {
+            currentYear = 2025;
+            currentMonth = 6; // July
+            initialDay = 2;
+        }
+
+        if (yearDisplay) {
+            yearDisplay.innerHTML = `&lt; ${currentYear}年`;
+        }
+        if (monthDisplay) {
+            monthDisplay.textContent = `${currentMonth + 1}月`;
+        }
+
+        generateCalendar();
+        renderSchedule(initialDay);
+
+        // Highlight the correct day in the calendar without simulating a click
+        const currentSelected = daysGrid.querySelector('.today');
+        if (currentSelected) {
+            currentSelected.classList.remove('today');
+        }
+        const dayToSelect = Array.from(daysGrid.querySelectorAll('.day')).find(d => d.textContent == initialDay);
+        if (dayToSelect) {
+            dayToSelect.classList.add('today');
+        }
+
+        // Update the 'Add Event' button link
+        const selectedDate = new Date(currentYear, currentMonth, initialDay);
+        const formattedDate = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
+        const addEventBtn = document.getElementById('add-event-btn');
+        if (addEventBtn) {
+            addEventBtn.href = `add_event.html?date=${formattedDate}`;
+        }
     }
-    if (monthDisplay) {
-        monthDisplay.textContent = `${currentMonth + 1}月`;
-    }
+
+    initialize();
 
     // One-time migration of hardcoded events to localStorage
-    if (!localStorage.getItem('migration_done_v2')) {
+    if (!localStorage.getItem('migration_done_v6')) {
         const hardcodedEvents = [
             {
                 id: 'event-1',
@@ -136,6 +181,496 @@ document.addEventListener('DOMContentLoaded', function () {
                 startDate: '2025年7月9日 下午8:00',
                 endDate: '2025年7月9日 下午9:00',
                 date: '2025-07-09'
+            },
+            {
+                id: 'event-17',
+                title: '惠康客诉线上会议',
+                startDate: '2025年7月8日 上午9:00',
+                endDate: '2025年7月8日 上午10:00',
+                date: '2025-07-08'
+            },
+            {
+                id: 'event-18',
+                title: '惠康客诉会后记录与方案确认',
+                startDate: '2025年7月8日 上午10:00',
+                endDate: '2025年7月8日 上午10:30',
+                date: '2025-07-08'
+            },
+            {
+                id: 'event-19',
+                title: '前往江丰科技途中要点整理',
+                startDate: '2025年7月8日 上午10:30',
+                endDate: '2025年7月8日 上午11:10',
+                date: '2025-07-08'
+            },
+            {
+                id: 'event-20',
+                title: '江丰科技现场沟通',
+                startDate: '2025年7月8日 上午11:10',
+                endDate: '2025年7月8日 下午12:00',
+                date: '2025-07-08'
+            },
+            {
+                id: 'event-21',
+                title: '与王总午餐沟通',
+                startDate: '2025年7月8日 下午12:00',
+                endDate: '2025年7月8日 下午1:00',
+                date: '2025-07-08'
+            },
+            {
+                id: 'event-22',
+                title: '返回途中信息整理与致谢讯息',
+                startDate: '2025年7月8日 下午1:00',
+                endDate: '2025年7月8日 下午1:30',
+                date: '2025-07-08'
+            },
+            {
+                id: 'event-23',
+                title: '大发光纤合同条款与底线对表',
+                startDate: '2025年7月8日 下午1:30',
+                endDate: '2025年7月8日 下午2:00',
+                date: '2025-07-08'
+            },
+            {
+                id: 'event-24',
+                title: '大发光纤合同洽谈',
+                startDate: '2025年7月8日 下午2:00',
+                endDate: '2025年7月8日 下午3:00',
+                date: '2025-07-08'
+            },
+            {
+                id: 'event-25',
+                title: '大发光纤合同结果确认与后续动作安排',
+                startDate: '2025年7月8日 下午3:00',
+                endDate: '2025年7月8日 下午4:00',
+                date: '2025-07-08'
+            },
+            {
+                id: 'event-26',
+                title: '今日主要客户机会与风险盘点',
+                startDate: '2025年7月8日 下午4:00',
+                endDate: '2025年7月8日 下午5:00',
+                date: '2025-07-08'
+            },
+            {
+                id: 'event-27',
+                title: '同行业潜在客户轻触达与约访',
+                startDate: '2025年7月8日 下午5:00',
+                endDate: '2025年7月8日 下午6:00',
+                date: '2025-07-08'
+            },
+            {
+                id: 'event-28',
+                title: '晚餐与机动沟通（奥克斯电器）',
+                startDate: '2025年7月8日 下午6:00',
+                endDate: '2025年7月8日 下午7:00',
+                date: '2025-07-08'
+            },
+            {
+                id: 'event-29',
+                title: '填写日报',
+                startDate: '2025年7月8日 下午7:00',
+                endDate: '2025年7月8日 下午8:00',
+                date: '2025-07-08'
+            },
+            {
+                id: 'event-30',
+                title: '日终复盘与明日三件事规划',
+                startDate: '2025年7月8日 下午8:00',
+                endDate: '2025年7月8日 下午9:00',
+                date: '2025-07-08'
+            },
+            {
+                id: 'event-31',
+                title: '杭州凌坤自动化设备有限公司年度需求访谈（线上）',
+                startDate: '2025年7月9日 上午9:00',
+                endDate: '2025年7月9日 上午10:00',
+                date: '2025-07-09'
+            },
+            {
+                id: 'event-32',
+                title: '凌坤自动化会议纪要与系统机会整理',
+                startDate: '2025年7月9日 上午10:00',
+                endDate: '2025年7月9日 上午10:30',
+                date: '2025-07-09'
+            },
+            {
+                id: 'event-33',
+                title: '前往杭州荣松包装制品有限公司途中要点整理',
+                startDate: '2025年7月9日 上午10:30',
+                endDate: '2025年7月9日 上午11:10',
+                date: '2025-07-09'
+            },
+            {
+                id: 'event-34',
+                title: '杭州荣松包装制品有限公司现场产线走访与痛点盘点',
+                startDate: '2025年7月9日 上午11:10',
+                endDate: '2025年7月9日 下午12:00',
+                date: '2025-07-09'
+            },
+            {
+                id: 'event-35',
+                title: '与荣松包装生产负责人午餐沟通（确认导入节奏）',
+                startDate: '2025年7月9日 下午12:00',
+                endDate: '2025年7月9日 下午1:00',
+                date: '2025-07-09'
+            },
+            {
+                id: 'event-36',
+                title: '返回途中信息整理与致谢讯息',
+                startDate: '2025年7月9日 下午1:00',
+                endDate: '2025年7月9日 下午1:30',
+                date: '2025-07-09'
+            },
+            {
+                id: 'event-37',
+                title: '杭州宏羽服饰有限公司现况与历史项目资料快速梳理',
+                startDate: '2025年7月9日 下午1:30',
+                endDate: '2025年7月9日 下午2:00',
+                date: '2025-07-09'
+            },
+            {
+                id: 'event-38',
+                title: '杭州宏羽服饰有限公司生产排程与门店补货方案初谈',
+                startDate: '2025年7月9日 下午2:00',
+                endDate: '2025年7月9日 下午3:00',
+                date: '2025-07-09'
+            },
+            {
+                id: 'event-39',
+                title: '宏羽服饰合作条款与报价测算对表',
+                startDate: '2025年7月9日 下午3:00',
+                endDate: '2025年7月9日 下午4:00',
+                date: '2025-07-09'
+            },
+            {
+                id: 'event-40',
+                title: '今日三家客户机会与风险盘点（凌坤/荣松/宏羽）',
+                startDate: '2025年7月9日 下午4:00',
+                endDate: '2025年7月9日 下午5:00',
+                date: '2025-07-09'
+            },
+            {
+                id: 'event-41',
+                title: '同园区制造业潜在客户轻触达与约访',
+                startDate: '2025年7月9日 下午5:00',
+                endDate: '2025年7月9日 下午6:00',
+                date: '2025-07-09'
+            },
+            {
+                id: 'event-42',
+                title: '晚餐与机动沟通（视客户加场而定）',
+                startDate: '2025年7月9日 下午6:00',
+                endDate: '2025年7月9日 下午7:00',
+                date: '2025-07-09'
+            },
+            {
+                id: 'event-43',
+                title: '填写日报与CRM更新',
+                startDate: '2025年7月9日 下午7:00',
+                endDate: '2025年7月9日 下午8:00',
+                date: '2025-07-09'
+            },
+            {
+                id: 'event-44',
+                title: '日终复盘与明日三件事规划',
+                startDate: '2025年7月9日 下午8:00',
+                endDate: '2025年7月9日 下午9:00',
+                date: '2025-07-09'
+            },
+            {
+                id: 'event-45',
+                title: '润展（杭州）新材料有限公司年度订单与产能规划沟通',
+                startDate: '2025年7月7日 上午9:00',
+                endDate: '2025年7月7日 上午10:00',
+                date: '2025-07-07'
+            },
+            {
+                id: 'event-46',
+                title: '润展新材料需求优先级与系统蓝图粗排',
+                startDate: '2025年7月7日 上午10:00',
+                endDate: '2025年7月7日 上午10:30',
+                date: '2025-07-07'
+            },
+            {
+                id: 'event-47',
+                title: '前往杭州安泰工艺品有限公司途中整理访谈要点',
+                startDate: '2025年7月7日 上午10:30',
+                endDate: '2025年7月7日 上午11:10',
+                date: '2025-07-07'
+            },
+            {
+                id: 'event-48',
+                title: '杭州安泰工艺品有限公司打样/接单流程走查',
+                startDate: '2025年7月7日 上午11:10',
+                endDate: '2025年7月7日 中午12:00',
+                date: '2025-07-07'
+            },
+            {
+                id: 'event-49',
+                title: '与安泰工艺品业务与生产双线午餐沟通',
+                startDate: '2025年7月7日 中午12:00',
+                endDate: '2025年7月7日 下午1:00',
+                date: '2025-07-07'
+            },
+            {
+                id: 'event-50',
+                title: '安泰工艺品项目推动关键干系人与决策链梳理',
+                startDate: '2025年7月7日 下午1:00',
+                endDate: '2025年7月7日 下午1:30',
+                date: '2025-07-07'
+            },
+            {
+                id: 'event-51',
+                title: '杭州辉创实业有限公司成本结构与库存策略访谈准备',
+                startDate: '2025年7月7日 下午1:30',
+                endDate: '2025年7月7日 下午2:00',
+                date: '2025-07-07'
+            },
+            {
+                id: 'event-52',
+                title: '杭州辉创实业有限公司产销协同与库存周转优化讨论',
+                startDate: '2025年7月7日 下午2:00',
+                endDate: '2025年7月7日 下午3:00',
+                date: '2025-07-07'
+            },
+            {
+                id: 'event-53',
+                title: '辉创实业业务蓝图确认与阶段性里程碑对表',
+                startDate: '2025年7月7日 下午3:00',
+                endDate: '2025年7月7日 下午4:00',
+                date: '2025-07-07'
+            },
+            {
+                id: 'event-54',
+                title: '今日客户价值评估与潜在标杆案例筛选（润展/安泰/辉创）',
+                startDate: '2025年7月7日 下午4:00',
+                endDate: '2025年7月7日 下午5:00',
+                date: '2025-07-07'
+            },
+            {
+                id: 'event-55',
+                title: '拜访周边制造业企业，收集共性需求线索',
+                startDate: '2025年7月7日 下午5:00',
+                endDate: '2025年7月7日 下午6:00',
+                date: '2025-07-07'
+            },
+            {
+                id: 'event-56',
+                title: '晚餐与机动沟通（安排后续技术评估会）',
+                startDate: '2025年7月7日 晚上6:00',
+                endDate: '2025年7月7日 晚上7:00',
+                date: '2025-07-07'
+            },
+            {
+                id: 'event-57',
+                title: '填写日报与会议纪要归档',
+                startDate: '2025年7月7日 晚上7:00',
+                endDate: '2025年7月7日 晚上8:00',
+                date: '2025-07-07'
+            },
+            {
+                id: 'event-58',
+                title: '日终复盘与明日三件事规划',
+                startDate: '2025年7月7日 晚上8:00',
+                endDate: '2025年7月7日 晚上9:00',
+                date: '2025-07-07'
+            },
+            {
+                id: 'event-59',
+                title: '杭州强勃包装制品有限公司客户结构与产品组合访谈',
+                startDate: '2025年7月10日 上午9:00',
+                endDate: '2025年7月10日 上午10:00',
+                date: '2025-07-10'
+            },
+            {
+                id: 'event-60',
+                title: '强勃包装生产节奏与瓶颈工序梳理',
+                startDate: '2025年7月10日 上午10:00',
+                endDate: '2025年7月10日 上午10:30',
+                date: '2025-07-10'
+            },
+            {
+                id: 'event-61',
+                title: '前往杭州尚逵机械设备有限公司途中准备演示方案',
+                startDate: '2025年7月10日 上午10:30',
+                endDate: '2025年7月10日 上午11:10',
+                date: '2025-07-10'
+            },
+            {
+                id: 'event-62',
+                title: '杭州尚逵机械设备有限公司售前售后流程与备件管理讨论',
+                startDate: '2025年7月10日 上午11:10',
+                endDate: '2025年7月10日 中午12:00',
+                date: '2025-07-10'
+            },
+            {
+                id: 'event-63',
+                title: '与尚逵机械销售/服务团队午餐沟通（确认系统诉求）',
+                startDate: '2025年7月10日 中午12:00',
+                endDate: '2025年7月10日 下午1:00',
+                date: '2025-07-10'
+            },
+            {
+                id: 'event-64',
+                title: '尚逵机械机会级别评估与内部立项建议草拟',
+                startDate: '2025年7月10日 下午1:00',
+                endDate: '2025年7月10日 下午1:30',
+                date: '2025-07-10'
+            },
+            {
+                id: 'event-65',
+                title: '浙江海明实业有限公司经营范围与生产布局快速了解',
+                startDate: '2025年7月10日 下午1:30',
+                endDate: '2025年7月10日 下午2:00',
+                date: '2025-07-10'
+            },
+            {
+                id: 'event-66',
+                title: '浙江海明实业有限公司多工厂协同与报表需求访谈',
+                startDate: '2025年7月10日 下午2:00',
+                endDate: '2025年7月10日 下午3:00',
+                date: '2025-07-10'
+            },
+            {
+                id: 'event-67',
+                title: '海明实业预算、合同与实施资源配置粗排',
+                startDate: '2025年7月10日 下午3:00',
+                endDate: '2025年7月10日 下午4:00',
+                date: '2025-07-10'
+            },
+            {
+                id: 'event-68',
+                title: '今日三家客户阶段性推进策略确定（强勃/尚逵/海明）',
+                startDate: '2025年7月10日 下午4:00',
+                endDate: '2025年7月10日 下午5:00',
+                date: '2025-07-10'
+            },
+            {
+                id: 'event-69',
+                title: '追踪历史沉睡线索，筛选可唤醒制造业客户',
+                startDate: '2025年7月10日 下午5:00',
+                endDate: '2025年7月10日 下午6:00',
+                date: '2025-07-10'
+            },
+            {
+                id: 'event-70',
+                title: '晚餐与机动沟通（视客户加开需求评审会）',
+                startDate: '2025年7月10日 晚上6:00',
+                endDate: '2025年7月10日 晚上7:00',
+                date: '2025-07-10'
+            },
+            {
+                id: 'event-71',
+                title: '填写日报与销售漏斗更新',
+                startDate: '2025年7月10日 晚上7:00',
+                endDate: '2025年7月10日 晚上8:00',
+                date: '2025-07-10'
+            },
+            {
+                id: 'event-72',
+                title: '日终复盘与明日三件事规划',
+                startDate: '2025年7月10日 晚上8:00',
+                endDate: '2025年7月10日 晚上9:00',
+                date: '2025-07-10'
+            },
+            {
+                id: 'event-73',
+                title: '杭州初芯服饰有限公司新品上市节奏与供应链协同讨论',
+                startDate: '2025年7月11日 上午9:00',
+                endDate: '2025年7月11日 上午10:00',
+                date: '2025-07-11'
+            },
+            {
+                id: 'event-74',
+                title: '初芯服饰门店补货逻辑与系统参数需求整理',
+                startDate: '2025年7月11日 上午10:00',
+                endDate: '2025年7月11日 上午10:30',
+                date: '2025-07-11'
+            },
+            {
+                id: 'event-75',
+                title: '前往浙江三锁实业有限公司途中复盘服饰行业共性需求',
+                startDate: '2025年7月11日 上午10:30',
+                endDate: '2025年7月11日 上午11:10',
+                date: '2025-07-11'
+            },
+            {
+                id: 'event-76',
+                title: '浙江三锁实业有限公司生产流程与质量管控现状访谈',
+                startDate: '2025年7月11日 上午11:10',
+                endDate: '2025年7月11日 中午12:00',
+                date: '2025-07-11'
+            },
+            {
+                id: 'event-77',
+                title: '与三锁实业生产/品质联合午餐沟通（锁定试点线）',
+                startDate: '2025年7月11日 中午12:00',
+                endDate: '2025年7月11日 下午1:00',
+                date: '2025-07-11'
+            },
+            {
+                id: 'event-78',
+                title: '三锁实业导入风险点与缓冲方案记录',
+                startDate: '2025年7月11日 下午1:00',
+                endDate: '2025年7月11日 下午1:30',
+                date: '2025-07-11'
+            },
+            {
+                id: 'event-79',
+                title: '杭州世佳医疗器械有限公司合规要求与仓储流程了解',
+                startDate: '2025年7月11日 下午1:30',
+                endDate: '2025年7月11日 下午2:00',
+                date: '2025-07-11'
+            },
+            {
+                id: 'event-80',
+                title: '杭州世佳医疗器械有限公司批号、追溯与质检流程讨论',
+                startDate: '2025年7月11日 下午2:00',
+                endDate: '2025年7月11日 下午3:00',
+                date: '2025-07-11'
+            },
+            {
+                id: 'event-81',
+                title: '世佳医疗器械项目实施路径与排期初步对表',
+                startDate: '2025年7月11日 下午3:00',
+                endDate: '2025年7月11日 下午4:00',
+                date: '2025-07-11'
+            },
+            {
+                id: 'event-82',
+                title: '今日客户分行业机会盘点（服饰/五金/医疗器械）',
+                startDate: '2025年7月11日 下午4:00',
+                endDate: '2025年7月11日 下午5:00',
+                date: '2025-07-11'
+            },
+            {
+                id: 'event-83',
+                title: '对接内部合规/医药行业顾问，确认方案可行性',
+                startDate: '2025年7月11日 下午5:00',
+                endDate: '2025年7月11日 下午6:00',
+                date: '2025-07-11'
+            },
+            {
+                id: 'event-84',
+                title: '晚餐与机动沟通',
+                startDate: '2025年7月11日 晚上6:00',
+                endDate: '2025年7月11日 晚上7:00',
+                date: '2025-07-11'
+            },
+            {
+                id: 'event-85',
+                title: '填写日报与关键客户画像更新',
+                startDate: '2025年7月11日 晚上7:00',
+                endDate: '2025年7月11日 晚上8:00',
+                date: '2025-07-11'
+            },
+            {
+                id: 'event-86',
+                title: '日终复盘与明日三件事规划',
+                startDate: '2025年7月11日 晚上8:00',
+                endDate: '2025年7月11日 晚上9:00',
+                date: '2025-07-11'
             }
         ];
 
@@ -148,7 +683,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         localStorage.setItem('events', JSON.stringify(events));
-        localStorage.setItem('migration_done_v2', 'true');
+        localStorage.setItem('migration_done_v6', 'true');
     }
 
     function getStoredEvents() {
@@ -220,6 +755,9 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        const checkedInEvents = JSON.parse(localStorage.getItem('checkedInEvents')) || {};
+        const checkInRecords = JSON.parse(localStorage.getItem('checkInRecords')) || {};
+
         allEvents.sort((a, b) => {
             const dateA = parseScheduleDate(a.startDate);
             const dateB = parseScheduleDate(b.startDate);
@@ -263,16 +801,18 @@ document.addEventListener('DOMContentLoaded', function () {
             itemTime.className = 'item-time';
 
             const startTimeDiv = document.createElement('div');
-            const timeMatch = event.startDate.match(/(\d{1,2}:\d{2})/)[0];
-            startTimeDiv.textContent = timeMatch || 'N/A';
+            const startDate = parseScheduleDate(event.startDate);
+            if (startDate) {
+                startTimeDiv.textContent = `${String(startDate.getHours()).padStart(2, '0')}:${String(startDate.getMinutes()).padStart(2, '0')}`;
+            }
             itemTime.appendChild(startTimeDiv);
 
             const endTimeDiv = document.createElement('div');
             endTimeDiv.className = 'end-time';
             if (event.endDate) {
-                const endTimeMatch = event.endDate.match(/(\d{1,2}:\d{2})/);
-                if (endTimeMatch) {
-                    endTimeDiv.textContent = endTimeMatch[0];
+                const endDate = parseScheduleDate(event.endDate);
+                if (endDate) {
+                    endTimeDiv.textContent = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`;
                 }
             }
             itemTime.appendChild(endTimeDiv);
@@ -280,16 +820,37 @@ document.addEventListener('DOMContentLoaded', function () {
             item.appendChild(colorBar);
             item.appendChild(itemContent);
 
-            // Add depart button if location contains '现场' or '公司'
-            if (event.location && (event.location.includes('现场') || event.location.includes('公司'))) {
-                const departButton = document.createElement('div');
-                departButton.classList.add('depart-button');
-                departButton.textContent = '打卡';
-                departButton.addEventListener('click', (e) => {
-                e.stopPropagation(); // Prevent navigating to edit page
-                window.location.href = `depart_options.html?date=${dateStr}`;
-            });
-                item.appendChild(departButton);
+            // Add depart button if title contains keywords
+            const keywords = ["合同", "现场", "公司", "机动沟通", "轻触达"];
+            if (event.title && keywords.some(keyword => event.title.includes(keyword))) {
+                const buttonContainer = document.createElement('div');
+                buttonContainer.className = 'button-container';
+
+                const arrivalButton = document.createElement('div');
+                arrivalButton.classList.add('depart-button');
+                arrivalButton.textContent = '到场打卡';
+                if ((checkedInEvents[event.id] && checkedInEvents[event.id].arrival) || (checkInRecords[event.id] && checkInRecords[event.id].some(r => r.type === 'arrival'))) {
+                    arrivalButton.classList.add('checked-in');
+                }
+                arrivalButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    window.location.href = `check_in.html?date=${dateStr}&eventId=${event.id}&type=arrival`;
+                });
+
+                const departureButton = document.createElement('div');
+                departureButton.classList.add('depart-button');
+                departureButton.textContent = '离场打卡';
+                if ((checkedInEvents[event.id] && checkedInEvents[event.id].departure) || (checkInRecords[event.id] && checkInRecords[event.id].some(r => r.type === 'departure'))) {
+                    departureButton.classList.add('checked-in');
+                }
+                departureButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    window.location.href = `check_in.html?date=${dateStr}&eventId=${event.id}&type=departure`;
+                });
+
+                buttonContainer.appendChild(arrivalButton);
+                buttonContainer.appendChild(departureButton);
+                item.appendChild(buttonContainer);
             }
 
             item.appendChild(itemTime);
@@ -437,34 +998,127 @@ document.addEventListener('DOMContentLoaded', function () {
         renderSchedule(day);
     }
 
-    function initialize() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const dateFromUrl = urlParams.get('date');
+    // --- Search Functionality ---
+    const searchIcon = document.querySelector('.header-actions .icon');
+    let searchOverlay, searchInput, searchResults;
 
-        if (dateFromUrl) {
-            const [year, month, day] = dateFromUrl.split('-').map(Number);
-            currentYear = year;
-            currentMonth = month - 1;
-            generateCalendar();
-            renderSchedule(day);
+    function createSearchOverlay() {
+        if (document.getElementById('search-overlay')) return;
 
-            // Highlight the correct day in the calendar
-            const currentSelected = daysGrid.querySelector('.today');
-            if (currentSelected) {
-                currentSelected.classList.remove('today');
-            }
-            const dayDivs = daysGrid.querySelectorAll('.day');
-            dayDivs.forEach(div => {
-                if (parseInt(div.textContent) === day) {
-                    div.classList.add('today');
-                }
-            });
+        searchOverlay = document.createElement('div');
+        searchOverlay.id = 'search-overlay';
+        searchOverlay.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 1); z-index: 1000; padding: 15px;
+            display: flex; flex-direction: column; box-sizing: border-box;
+        `;
 
-        } else {
-            generateCalendar();
-            renderSchedule(2); // Render for July 2nd, which is the hardcoded 'today'
-        }
+        const searchBar = document.createElement('div');
+        searchBar.style.cssText = `display: flex; align-items: center; margin-bottom: 15px;`;
+
+        searchInput = document.createElement('input');
+        searchInput.type = 'text';
+        searchInput.placeholder = '搜索日程...';
+        searchInput.style.cssText = `
+            flex-grow: 1; padding: 10px; border: 1px solid #ccc; 
+            border-radius: 5px; font-size: 16px;
+        `;
+
+        const closeButton = document.createElement('button');
+        closeButton.textContent = '取消';
+        closeButton.style.cssText = `
+            background: none; border: none; font-size: 16px; 
+            color: #007AFF; margin-left: 10px; cursor: pointer;
+        `;
+
+        searchResults = document.createElement('div');
+        searchResults.id = 'search-results';
+        searchResults.style.cssText = `overflow-y: auto;`;
+
+        searchBar.appendChild(searchInput);
+        searchBar.appendChild(closeButton);
+        searchOverlay.appendChild(searchBar);
+        searchOverlay.appendChild(searchResults);
+        document.body.appendChild(searchOverlay);
+
+        closeButton.addEventListener('click', () => {
+            document.body.removeChild(searchOverlay);
+        });
+
+        searchInput.addEventListener('input', performSearch);
     }
 
-    initialize();
+    function performSearch() {
+        const query = searchInput.value.toLowerCase();
+        searchResults.innerHTML = '';
+        if (query.length < 1) return;
+
+        const allEvents = getStoredEvents();
+        const filteredEvents = allEvents.filter(event => 
+            event.title.toLowerCase().includes(query)
+        );
+
+        // Group events by date
+        const groupedByDate = filteredEvents.reduce((acc, event) => {
+            const date = event.date; // Assuming YYYY-MM-DD format
+            if (!acc[date]) {
+                acc[date] = [];
+            }
+            acc[date].push(event);
+            return acc;
+        }, {});
+
+        // Sort dates and display
+        Object.keys(groupedByDate).sort().forEach(date => {
+            const dateHeader = document.createElement('h3');
+            dateHeader.textContent = date.replace(/-/g, '/');
+            dateHeader.style.cssText = `font-size: 14px; color: #8e8e93; margin: 10px 0 5px;`;
+            searchResults.appendChild(dateHeader);
+
+            groupedByDate[date].forEach(event => {
+                const resultItem = document.createElement('div');
+                resultItem.textContent = event.title;
+                resultItem.style.cssText = `
+                    padding: 12px; background: #f0f0f0; border-radius: 5px; margin-bottom: 8px; cursor: pointer;
+                `;
+                resultItem.addEventListener('click', () => {
+                    window.location.href = `index.html?date=${event.date}`;
+                    document.body.removeChild(searchOverlay);
+                });
+                searchResults.appendChild(resultItem);
+            });
+        });
+    }
+
+    if (searchIcon) {
+        searchIcon.addEventListener('click', createSearchOverlay);
+    }
+
+    // --- Clear Check-in Functionality ---
+    const clearCheckinBtn = document.getElementById('clear-checkin-btn');
+    if (clearCheckinBtn) {
+        clearCheckinBtn.addEventListener('click', () => {
+            if (confirm('您确定要清除所有的签到打卡记录吗？此操作不可撤销。')) {
+                const allEvents = getStoredEvents();
+                const updatedEvents = allEvents.map(event => {
+                    delete event.checkIn;
+                    delete event.checkOut;
+                    return event;
+                });
+                localStorage.setItem('events', JSON.stringify(updatedEvents));
+                events = getStoredEvents(); // Re-fetch events to update the global variable
+                // Re-render the calendar to reflect the changes
+                renderCalendar(currentYear, currentMonth);
+                // Also update the schedule view for the currently selected day
+                const selectedDayElem = document.querySelector('.day.selected');
+                if (selectedDayElem) {
+                    renderSchedule(parseInt(selectedDayElem.textContent));
+                } else {
+                    // If no day is selected, maybe render for today or clear the schedule view
+                    document.getElementById('schedule-list').innerHTML = '';
+                }
+                alert('所有签到打卡记录已成功清除。');
+            }
+        });
+    }
 });

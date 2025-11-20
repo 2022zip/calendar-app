@@ -31,6 +31,43 @@ header span {
     font-size: 17px;
 }
 
+header .header-title-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 18px;
+}
+
+#delete-event-btn {
+    background-color: #FF3B30;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 5px 10px;
+    font-size: 14px;
+    cursor: pointer;
+    margin-left: 10px;
+}
+
+#search-nearby-customers-btn {
+    background-color: #007AFF;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 5px 10px;
+    font-size: 14px;
+    cursor: pointer;
+    margin-left: 10px;
+}
+
+main {
+
+}
+
 .event-form {
     padding: 15px;
 }

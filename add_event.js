@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', function () {
-    // Get references to all form elements
+    const deleteButton = document.getElementById('delete-event-btn');
     const eventTitleInput = document.getElementById('event-title');
     const eventNotesInput = document.getElementById('event-notes');
     const startDateInput = document.getElementById('start-date');
@@ -10,12 +10,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const summaryInput = document.getElementById('summary');
     const addButton = document.getElementById('add-event-button');
     const headerTitle = document.querySelector('header span');
+    const cancelButton = document.querySelector('.cancel-btn');
 
     const urlParams = new URLSearchParams(window.location.search);
     const eventId = urlParams.get('id');
     const date = urlParams.get('date');
 
-    // Function to get the date part from a full date-time string
     function extractDate(dateString) {
         const match = dateString.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
         if (!match) return new Date().toISOString().slice(0, 10);
@@ -23,9 +23,9 @@ document.addEventListener('DOMContentLoaded', function () {
         return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     }
 
-    // Load event data if editing
     if (eventId) {
-        headerTitle.textContent = '编辑日程';
+        document.getElementById('page-title').textContent = '编辑日程';
+        deleteButton.style.display = 'block';
         let events = JSON.parse(localStorage.getItem('events')) || [];
         const eventToEdit = events.find(e => e.id === eventId);
 
@@ -40,12 +40,29 @@ document.addEventListener('DOMContentLoaded', function () {
             summaryInput.value = eventToEdit.summary || '';
         }
     } else if (date) {
-        // Set default times for new event
         const year = date.substring(0, 4);
         const month = date.substring(5, 7);
         const day = date.substring(8, 10);
         startDateInput.value = `${year}年${month}月${day}日 上午8:30`;
         endDateInput.value = `${year}年${month}月${day}日 上午8:40`;
+    }
+
+    deleteButton.addEventListener('click', function() {
+        const dateOfDeletedEvent = extractDate(startDateInput.value);
+        window.location.href = `delete_confirm.html?id=${eventId}&date=${dateOfDeletedEvent}`;
+    });
+
+    document.getElementById('search-nearby-customers-btn').addEventListener('click', function() {
+        const date = extractDate(startDateInput.value);
+        window.location.href = `map_view.html?id=${eventId}&date=${date}`;
+    });
+
+    if (cancelButton) {
+        cancelButton.addEventListener('click', function (event) {
+            event.preventDefault();
+            const date = extractDate(startDateInput.value);
+            window.location.href = `index.html?date=${date}`;
+        });
     }
 
     function autoResizeTextarea(textarea) {

@@ -37,6 +37,23 @@ header {
     font-weight: bold;
 }
 
+#clear-checkin-btn {
+    background-color: #007AFF;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 10px;
+    padding: 0;
+    line-height: 1;
+}
+
 .header-actions .icon {
     font-size: 22px;
     margin-left: 20px;
@@ -146,6 +163,13 @@ hr {
     font-size: 12px;
 }
 
+.button-container {
+    display: flex;
+    gap: 10px;
+    margin-left: auto;
+    margin-right: 15px;
+}
+
 .depart-button {
     background-color: #4a90e2;
     color: white;
@@ -155,8 +179,16 @@ hr {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
+    font-size: 12px;
     font-weight: bold;
-    margin-left: auto;
-    margin-right: 15px;
+    text-align: center;
+    line-height: 1.2;
+}
+
+.depart-button.checked-in {
+    background-color: #4cd964;
+}
+
+.depart-button.checked-in {
+    background-color: #4cd964;
 }
