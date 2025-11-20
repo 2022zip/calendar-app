@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>打卡</title>
+    <link rel="stylesheet" href="check_in.css">
+</head>
+<body>
+    <header>
+        <a href="#" class="back-btn">返回</a>
+        <h1>打卡</h1>
+    </header>
+    <main>
+        <button id="check-in-btn">到场打卡</button>
+        <p id="check-in-time"></p>
+        <button id="check-out-btn">离场打卡</button>
+        <p id="check-out-time"></p>
+
+        <div class="camera-container">
+            <video id="camera-stream" autoplay></video>
+            <button id="capture-btn">拍照</button>
+            <canvas id="canvas" style="display:none;"></canvas>
+            <img id="photo" />
+        </div>
+    </main>
+    <script src="check_in.js"></script>
+</body>
+</html>

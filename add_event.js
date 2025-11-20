@@ -57,6 +57,11 @@ document.addEventListener('DOMContentLoaded', function () {
         window.location.href = `map_view.html?id=${eventId}&date=${date}`;
     });
 
+    document.getElementById('check-in-btn-page').addEventListener('click', function() {
+        const date = extractDate(startDateInput.value);
+        window.location.href = `check_in.html?id=${eventId}&date=${date}`;
+    });
+
     if (cancelButton) {
         cancelButton.addEventListener('click', function (event) {
             event.preventDefault();
