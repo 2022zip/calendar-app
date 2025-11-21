@@ -693,15 +693,24 @@ document.addEventListener('DOMContentLoaded', function () {
         return JSON.parse(localStorage.getItem('events')) || [];
     }
 
-    function hasValidCheckIn(eventId) {
+    function getEventRecords(eventId) {
         try {
             const key = `checkInRecords_${eventId}`;
             const records = JSON.parse(localStorage.getItem(key)) || [];
-            if (!Array.isArray(records)) return false;
-            return records.some(r => r && r.type === '到场打卡' && typeof r.time === 'string');
+            return Array.isArray(records) ? records : [];
         } catch (e) {
-            return false;
+            return [];
         }
+    }
+
+    function hasValidCheckIn(eventId) {
+        const records = getEventRecords(eventId);
+        return records.some(r => r && r.type === '到场打卡' && typeof r.time === 'string');
+    }
+
+    function hasValidCheckOut(eventId) {
+        const records = getEventRecords(eventId);
+        return records.some(r => r && r.type === '离场打卡' && typeof r.time === 'string');
     }
 
     function generateCalendar() {
@@ -857,6 +866,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 checkOutButton.href = `check_in.html?eventId=${event.id}&date=${event.date}&type=check-out&eventTitle=${encodeURIComponent(event.title)}`;
                 checkOutButton.textContent = '离场打卡';
                 checkOutButton.classList.add('check-out-btn');
+                if (hasValidCheckOut(event.id)) {
+                    checkOutButton.classList.add('has-record');
+                }
                 item.appendChild(checkOutButton);
             }
 
