@@ -5,11 +5,13 @@ body {
 }
 
 .container {
-    background-color: white;
-    margin: 20px;
+    background-color: #fff;
+    width: 92%;
+    max-width: 420px;
+    margin: 20px auto;
     padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    border-radius: 28px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
 }
 
 .header {
@@ -35,13 +37,20 @@ body {
 }
 
 .title {
-    font-size: 20px;
+    font-size: 24px;
     font-weight: bold;
-    margin-top: 20px;
-    margin-bottom: 20px;
+    margin-top: 12px;
+    margin-bottom: 16px;
+    text-align: center;
 }
 
+.ctrip-placeholder {
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+}
 .ctrip-placeholder img {
     width: 100%;
-    border-radius: 10px;
+    height: auto;
+    display: block;
 }
