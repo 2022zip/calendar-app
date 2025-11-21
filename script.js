@@ -631,10 +631,35 @@ document.addEventListener('DOMContentLoaded', function () {
         localStorage.setItem('events', JSON.stringify(events));
         localStorage.setItem('migration_done_v6', 'true');
     }
+    function bulkDeleteByDate(dateStr) {
+        let events = getStoredEvents();
+        const toDelete = events.filter(e => e.date === dateStr);
+        if (toDelete.length === 0) return false;
+        const ids = new Set(toDelete.map(e => e.id));
+        events = events.filter(e => e.date !== dateStr);
+        ids.forEach(id => {
+            try { localStorage.removeItem(`checkInRecords_${id}`); } catch (_) {}
+        });
+        localStorage.setItem('events', JSON.stringify(events));
+        return true;
+    }
     function initialize() {
         const hashParams = new URLSearchParams(window.location.hash ? window.location.hash.slice(1) : '');
         const urlParams = new URLSearchParams(window.location.search);
-        const dateParam = urlParams.get('date') || hashParams.get('date');
+        const deleteDateParam = urlParams.get('deleteDate') || hashParams.get('deleteDate');
+        const doDelete = (urlParams.get('confirm') || hashParams.get('confirm')) === 'yes';
+        if (deleteDateParam && doDelete) {
+            bulkDeleteByDate(deleteDateParam);
+        }
+        const adjustDateParam = urlParams.get('adjustDate') || hashParams.get('adjustDate');
+        const pairParam = urlParams.get('pair') || hashParams.get('pair');
+        if (adjustDateParam && pairParam) {
+            const parts = pairParam.split(',');
+            if (parts.length === 2) {
+                adjustPairByTitles(adjustDateParam, parts[0], parts[1]);
+            }
+        }
+        const dateParam = (urlParams.get('date') || hashParams.get('date') || deleteDateParam || adjustDateParam);
         let initialDay;
 
         if (dateParam) {
@@ -703,6 +728,151 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    function getConflictPref() {
+        try {
+            const raw = JSON.parse(localStorage.getItem('conflictPref') || '{}');
+            const autoAdjust = raw.autoAdjust !== false;
+            const shortShiftMinutes = Number(raw.shortShiftMinutes) > 0 ? Number(raw.shortShiftMinutes) : 15;
+            const longShiftRatio = Number(raw.longShiftRatio) > 0 ? Number(raw.longShiftRatio) : 0.5;
+            return { autoAdjust, shortShiftMinutes, longShiftRatio };
+        } catch (_) {
+            return { autoAdjust: true, shortShiftMinutes: 15, longShiftRatio: 0.5 };
+        }
+    }
+
+    function tryNotify(title, body) {
+        const send = () => {
+            try { new Notification(title, { body }); } catch (_) {}
+        };
+        if (window.Notification) {
+            if (Notification.permission === 'granted') {
+                send();
+            } else if (Notification.permission !== 'denied') {
+                Notification.requestPermission().then(p => { if (p === 'granted') send(); });
+            }
+        }
+    }
+
+    function resolveConflictsForDate(dateStr) {
+        const pref = getConflictPref();
+        if (!pref.autoAdjust) return { adjusted: 0, unresolved: 0 };
+        const all = getStoredEvents();
+        const dayEvents = all.filter(e => e.date === dateStr);
+        if (dayEvents.length < 2) return { adjusted: 0, unresolved: 0 };
+        const bufferMs = 5 * 60 * 1000;
+        dayEvents.sort((a, b) => {
+            const sa = parseScheduleDate(a.startDate);
+            const sb = parseScheduleDate(b.startDate);
+            if (sa && sb) {
+                const diff = sa.getTime() - sb.getTime();
+                if (diff !== 0) return diff;
+                const ida = Number(String(a.id || '').replace('event-', '')) || 0;
+                const idb = Number(String(b.id || '').replace('event-', '')) || 0;
+                return idb - ida;
+            }
+            const ida = Number(String(a.id || '').replace('event-', '')) || 0;
+            const idb = Number(String(b.id || '').replace('event-', '')) || 0;
+            return ida - idb;
+        });
+        let lastEnd = null;
+        let adjusted = 0;
+        let unresolved = 0;
+        for (let i = 0; i < dayEvents.length; i++) {
+            const e = dayEvents[i];
+            const start = parseScheduleDate(e.startDate);
+            const end = parseScheduleDate(e.endDate);
+            if (!start || !end) continue;
+            const minStartWithBuffer = lastEnd ? new Date(lastEnd.getTime() + bufferMs) : null;
+            if (lastEnd && start < lastEnd) {
+                const durationMs = end.getTime() - start.getTime();
+                const boundaryEnd = new Date(dateStr);
+                boundaryEnd.setHours(23, 59, 0, 0);
+                if (e.lockStart) {
+                    delete e.needsManual;
+                    lastEnd = new Date(Math.max(lastEnd.getTime(), end.getTime()));
+                } else {
+                    const s = minStartWithBuffer;
+                    const t = new Date(s.getTime() + durationMs);
+                    if (t <= boundaryEnd) {
+                        e.startDate = formatScheduleDate(s);
+                        e.endDate = formatScheduleDate(t);
+                        delete e.needsManual;
+                        adjusted++;
+                        lastEnd = new Date(t.getTime());
+                    } else {
+                        e.needsManual = true;
+                        unresolved++;
+                        lastEnd = new Date(Math.max(lastEnd.getTime(), end.getTime()));
+                    }
+                }
+            } else {
+                lastEnd = new Date(end.getTime());
+                delete e.needsManual;
+            }
+        }
+        if (adjusted > 0 || unresolved > 0) {
+            for (let i = 0; i < dayEvents.length; i++) {
+                const idx = all.findIndex(ev => ev.id === dayEvents[i].id);
+                if (idx > -1) all[idx] = dayEvents[i];
+            }
+            localStorage.setItem('events', JSON.stringify(all));
+            if (adjusted > 0) tryNotify('系统通知', `已自动调整${adjusted}项冲突日程`);
+            if (unresolved > 0) tryNotify('系统通知', `${unresolved}项冲突需人工处理`);
+        }
+        return { adjusted, unresolved };
+    }
+    function adjustPairByTitles(dateStr, titleA, titleB) {
+        const bufferMs = 5 * 60 * 1000;
+        const all = getStoredEvents();
+        const dayEvents = all.filter(e => e.date === dateStr);
+        const a = dayEvents.find(e => e.title === titleA);
+        const b = dayEvents.find(e => e.title === titleB);
+        if (!a || !b) return false;
+        const aStart = parseScheduleDate(a.startDate);
+        const aEnd = parseScheduleDate(a.endDate);
+        const bStart = parseScheduleDate(b.startDate);
+        const bEnd = parseScheduleDate(b.endDate);
+        if (!aStart || !aEnd || !bStart || !bEnd) return false;
+        const boundaryStart = new Date(dateStr); boundaryStart.setHours(0,0,0,0);
+        const boundaryEnd = new Date(dateStr); boundaryEnd.setHours(23,59,0,0);
+        const aDur = aEnd.getTime() - aStart.getTime();
+        const bDur = bEnd.getTime() - bStart.getTime();
+        let changed = false;
+        if (bStart.getTime() < aEnd.getTime() + bufferMs) {
+            const targetAEnd = new Date(bStart.getTime() - bufferMs);
+            const targetAStart = new Date(targetAEnd.getTime() - aDur);
+            if (targetAStart >= boundaryStart) {
+                a.startDate = formatScheduleDate(targetAStart);
+                a.endDate = formatScheduleDate(targetAEnd);
+                changed = true;
+            } else if (!b.lockStart) {
+                const targetBStart = new Date(aEnd.getTime() + bufferMs);
+                const targetBEnd = new Date(targetBStart.getTime() + bDur);
+                let newDateStr = dateStr;
+                if (targetBEnd > boundaryEnd) {
+                    const nextDay = new Date(boundaryStart.getTime() + 24 * 60 * 60 * 1000);
+                    newDateStr = `${nextDay.getFullYear()}-${String(nextDay.getMonth() + 1).padStart(2, '0')}-${String(nextDay.getDate()).padStart(2, '0')}`;
+                }
+                b.startDate = formatScheduleDate(targetBStart);
+                b.endDate = formatScheduleDate(targetBEnd);
+                b.date = newDateStr;
+                changed = true;
+            } else {
+                b.needsManual = true;
+            }
+        }
+        if (changed) {
+            for (const ev of [a,b]) {
+                const idx = all.findIndex(e => e.id === ev.id);
+                if (idx > -1) all[idx] = ev;
+            }
+            localStorage.setItem('events', JSON.stringify(all));
+            resolveConflictsForDate(dateStr);
+            tryNotify('系统通知', 'AA与BB已调整，保持5分钟缓冲');
+        }
+        return changed;
+    }
+
     function hasValidCheckIn(eventId) {
         const records = getEventRecords(eventId);
         return records.some(r => r && r.type === '到场打卡' && typeof r.time === 'string');
@@ -764,6 +934,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function renderSchedule(day) {
         scheduleList.innerHTML = '';
         const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        resolveConflictsForDate(dateStr);
         const allEvents = getStoredEvents().filter(event => event.date === dateStr);
 
         if (allEvents.length === 0) {
@@ -790,6 +961,7 @@ document.addEventListener('DOMContentLoaded', function () {
             item.className = 'schedule-item';
             item.setAttribute('draggable', 'true');
             item.dataset.eventId = event.id;
+            if (event.needsManual) { item.classList.add('conflict'); }
 
             if (event.id) {
                 item.style.cursor = 'pointer';
@@ -934,20 +1106,23 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function parseScheduleDate(dateStr) {
-        const match = dateStr.match(/(\d{4})年(\d{1,2})月(\d{1,2})日\s*(?:(上午|下午))?\s*(\d{1,2}):(\d{2})/);
+        const match = dateStr.match(/(\d{4})年(\d{1,2})月(\d{1,2})日\s*(?:(凌晨|早上|上午|中午|下午|晚上))?\s*(\d{1,2}):(\d{2})/);
         if (!match) return null;
 
-        let [, year, month, day, ampm, hours, minutes] = match;
+        let [, year, month, day, period, hours, minutes] = match;
         year = parseInt(year);
         month = parseInt(month) - 1;
         day = parseInt(day);
         hours = parseInt(hours);
         minutes = parseInt(minutes);
 
-        if (ampm === '下午' && hours !== 12) {
+        const pmLike = period === '下午' || period === '晚上' || period === '中午';
+        const amLike = period === '上午' || period === '早上' || period === '凌晨';
+
+        if (pmLike && hours !== 12) {
             hours += 12;
         }
-        if (ampm === '上午' && hours === 12) {
+        if (amLike && hours === 12) {
             hours = 0;
         }
 
@@ -975,57 +1150,70 @@ document.addEventListener('DOMContentLoaded', function () {
         let storedEvents = getStoredEvents();
         const draggedEventId = draggingItem.dataset.eventId;
 
-        const draggedEventIndex = orderedIds.indexOf(draggedEventId);
-        const draggedEvent = storedEvents.find(e => e.id === draggedEventId);
+        const draggedIndex = orderedIds.indexOf(draggedEventId);
+        const dayEvents = orderedIds
+            .map(id => storedEvents.find(e => e.id === id))
+            .filter(e => !!e);
 
-        if (!draggedEvent) return;
+        if (draggedIndex === -1 || dayEvents.length === 0) return;
 
-        const startDateObj = parseScheduleDate(draggedEvent.startDate);
-        const endDateObj = parseScheduleDate(draggedEvent.endDate);
-        if (!startDateObj || !endDateObj) return;
-        const duration = endDateObj.getTime() - startDateObj.getTime();
-
-        if (draggedEventIndex < orderedIds.length - 1) {
-            const nextEventId = orderedIds[draggedEventIndex + 1];
-            const nextEvent = storedEvents.find(e => e.id === nextEventId);
-            if (nextEvent) {
-                const nextEventStartDate = parseScheduleDate(nextEvent.startDate);
-                if (nextEventStartDate) {
-                    const newEndDate = new Date(nextEventStartDate.getTime());
-                    const newStartDate = new Date(newEndDate.getTime() - duration);
-                    draggedEvent.endDate = formatScheduleDate(newEndDate);
-                    draggedEvent.startDate = formatScheduleDate(newStartDate);
-                }
-            }
-        } else if (draggedEventIndex > 0) {
-            const prevEventId = orderedIds[draggedEventIndex - 1];
-            const prevEvent = storedEvents.find(e => e.id === prevEventId);
-            if (prevEvent) {
-                const prevEventEndDate = parseScheduleDate(prevEvent.endDate);
-                if (prevEventEndDate) {
-                    const newStartDate = new Date(prevEventEndDate.getTime());
-                    const newEndDate = new Date(newStartDate.getTime() + duration);
-                    draggedEvent.startDate = formatScheduleDate(newStartDate);
-                    draggedEvent.endDate = formatScheduleDate(newEndDate);
-                }
-            }
-        }
-
-        const eventToUpdateIndex = storedEvents.findIndex(e => e.id === draggedEventId);
-        if (eventToUpdateIndex > -1) {
-            storedEvents[eventToUpdateIndex] = draggedEvent;
-        }
-
-        storedEvents.sort((a, b) => {
-            const aIndex = orderedIds.indexOf(a.id);
-            const bIndex = orderedIds.indexOf(b.id);
-            if (aIndex === -1 || bIndex === -1) return 0;
-            return aIndex - bIndex;
+        const durations = dayEvents.map(e => {
+            const s = parseScheduleDate(e.startDate);
+            const t = parseScheduleDate(e.endDate);
+            return s && t ? (t.getTime() - s.getTime()) : 0;
         });
+
+        let anchorStart;
+        if (draggedIndex > 0) {
+            const prevEnd = parseScheduleDate(dayEvents[draggedIndex - 1].endDate);
+            anchorStart = prevEnd ? new Date(prevEnd.getTime()) : parseScheduleDate(dayEvents[draggedIndex].startDate);
+        } else {
+            const draggedStart = parseScheduleDate(dayEvents[draggedIndex].startDate);
+            anchorStart = draggedStart ? new Date(draggedStart.getTime()) : null;
+            if (!anchorStart) {
+                for (let i = 0; i < dayEvents.length; i++) {
+                    const candidate = parseScheduleDate(dayEvents[i].startDate);
+                    if (candidate) { anchorStart = new Date(candidate.getTime()); break; }
+                }
+                if (!anchorStart) anchorStart = new Date();
+            }
+        }
+
+        const anchorEnd = new Date(anchorStart.getTime() + durations[draggedIndex]);
+        dayEvents[draggedIndex].startDate = formatScheduleDate(anchorStart);
+        dayEvents[draggedIndex].endDate = formatScheduleDate(anchorEnd);
+
+        for (let i = draggedIndex + 1; i < dayEvents.length; i++) {
+            const prevEndObj = parseScheduleDate(dayEvents[i - 1].endDate);
+            if (!prevEndObj) break;
+            const startObj = new Date(prevEndObj.getTime());
+            const endObj = new Date(startObj.getTime() + durations[i]);
+
+            const dateStr = dayEvents[i - 1].date;
+            const boundaryStart = new Date(dateStr);
+            boundaryStart.setHours(0, 0, 0, 0);
+            const boundaryEnd = new Date(dateStr);
+            boundaryEnd.setHours(23, 59, 0, 0);
+
+            let newDateStr = dateStr;
+            if (endObj > boundaryEnd) {
+                const nextDay = new Date(boundaryStart.getTime() + 24 * 60 * 60 * 1000);
+                newDateStr = `${nextDay.getFullYear()}-${String(nextDay.getMonth() + 1).padStart(2, '0')}-${String(nextDay.getDate()).padStart(2, '0')}`;
+            }
+
+            dayEvents[i].startDate = formatScheduleDate(startObj);
+            dayEvents[i].endDate = formatScheduleDate(endObj);
+            dayEvents[i].date = newDateStr;
+        }
+
+        for (let i = 0; i < dayEvents.length; i++) {
+            const idx = storedEvents.findIndex(e => e.id === dayEvents[i].id);
+            if (idx > -1) storedEvents[idx] = dayEvents[i];
+        }
 
         localStorage.setItem('events', JSON.stringify(storedEvents));
 
-        const day = new Date(draggedEvent.date).getDate();
+        const day = new Date(dayEvents[Math.min(draggedIndex, dayEvents.length - 1)].date).getDate();
         renderSchedule(day);
     }
 

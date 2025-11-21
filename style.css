@@ -128,6 +128,14 @@ hr {
     border-radius: 2px;
 }
 
+.schedule-item.conflict {
+    background-color: #fff5f5;
+}
+
+.schedule-item.conflict::before {
+    background-color: #FF3B30;
+}
+
 .color-bar {
     width: 4px;
     height: 100%;

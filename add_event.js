@@ -88,15 +88,83 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Date parsing and formatting functions (unchanged from original)
     function parseDate(dateString) {
-        const regex = /(\d{4})年(\d{1,2})月(\d{1,2})日 (上午|下午)(\d{1,2}):(\d{2})?/;
+        const regex = /(\d{4})年(\d{1,2})月(\d{1,2})日\s*(凌晨|早上|上午|中午|下午|晚上)(\d{1,2}):(\d{2})?/;
         const match = dateString.match(regex);
         if (!match) return null;
         let [, year, month, day, period, hour, minute] = match;
         hour = parseInt(hour, 10);
         minute = minute ? parseInt(minute, 10) : 0;
-        if (period === '下午' && hour < 12) hour += 12;
-        if (period === '上午' && hour === 12) hour = 0;
+        if ((period === '下午' || period === '中午' || period === '晚上') && hour < 12) hour += 12;
+        if ((period === '上午' || period === '早上' || period === '凌晨') && hour === 12) hour = 0;
         return new Date(year, month - 1, day, hour, minute);
+    }
+
+    function formatScheduleDate(dateObj) {
+        const year = dateObj.getFullYear();
+        const month = dateObj.getMonth() + 1;
+        const day = dateObj.getDate();
+        let hours = dateObj.getHours();
+        const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+        const ampm = hours >= 12 ? '下午' : '上午';
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+        return `${year}年${month}月${day}日 ${ampm}${hours}:${minutes}`;
+    }
+
+    function adjustAfterInsert(newEvent) {
+        const bufferMs = 5 * 60 * 1000;
+        let events = JSON.parse(localStorage.getItem('events')) || [];
+        const dateStr = newEvent.date;
+        const dayEvents = events.filter(e => e.date === dateStr);
+        if (dayEvents.length < 2) return;
+        dayEvents.sort((a, b) => {
+            const sa = parseDate(a.startDate);
+            const sb = parseDate(b.startDate);
+            if (sa && sb) {
+                const diff = sa - sb;
+                if (diff !== 0) return diff;
+                if (a.id === newEvent.id) return -1;
+                if (b.id === newEvent.id) return 1;
+                return 0;
+            }
+            return 0;
+        });
+        const idx = dayEvents.findIndex(e => e.id === newEvent.id);
+        if (idx === -1) return;
+        const durations = dayEvents.map(e => {
+            const s = parseDate(e.startDate);
+            const t = parseDate(e.endDate);
+            return s && t ? (t.getTime() - s.getTime()) : 0;
+        });
+        
+        for (let i = idx + 1; i < dayEvents.length; i++) {
+            const prevEnd = parseDate(dayEvents[i - 1].endDate);
+            if (!prevEnd) continue;
+            const s = parseDate(dayEvents[i].startDate);
+            const dur = durations[i];
+            const minStart = new Date(prevEnd.getTime() + bufferMs);
+            const useStart = s && s > minStart ? s : minStart;
+            const useEnd = new Date(useStart.getTime() + dur);
+            const boundaryEnd = new Date(dateStr);
+            boundaryEnd.setHours(23, 59, 0, 0);
+            if (dayEvents[i].allDay || dayEvents[i].fixedTime) {
+                dayEvents[i].needsManual = true;
+                continue;
+            }
+            dayEvents[i].startDate = formatScheduleDate(useStart);
+            dayEvents[i].endDate = formatScheduleDate(useEnd);
+            delete dayEvents[i].needsManual;
+            if (useEnd > boundaryEnd) {
+                const nextDay = new Date(boundaryEnd.getTime() + 60 * 1000);
+                const nextDateStr = `${nextDay.getFullYear()}-${String(nextDay.getMonth() + 1).padStart(2, '0')}-${String(nextDay.getDate()).padStart(2, '0')}`;
+                dayEvents[i].date = nextDateStr;
+            }
+        }
+        for (let i = 0; i < dayEvents.length; i++) {
+            const idxAll = events.findIndex(e => e.id === dayEvents[i].id);
+            if (idxAll > -1) events[idxAll] = dayEvents[i];
+        }
+        localStorage.setItem('events', JSON.stringify(events));
     }
 
     function formatDate(date) {
@@ -157,10 +225,12 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             // Create new event
             eventData.id = 'event-' + Date.now();
+            eventData.lockStart = true;
             events.push(eventData);
         }
 
         localStorage.setItem('events', JSON.stringify(events));
+        adjustAfterInsert(eventData);
         window.location.href = `index.html?date=${eventData.date}`;
     });
 });
