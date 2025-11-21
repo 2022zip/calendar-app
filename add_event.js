@@ -32,8 +32,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (eventToEdit) {
             eventTitleInput.value = eventToEdit.title || '';
             eventNotesInput.value = eventToEdit.notes || '';
-            startDateInput.value = eventToEdit.startDate || '';
-            endDateInput.value = eventToEdit.endDate || '';
+            const sObj = parseDate(eventToEdit.startDate || '');
+            const eObj = parseDate(eventToEdit.endDate || '');
+            startDateInput.value = sObj ? formatDate(sObj) : (eventToEdit.startDate || '');
+            endDateInput.value = eObj ? formatDate(eObj) : (eventToEdit.endDate || '');
             customerLevelInput.value = eventToEdit.customerLevel || '';
             hiddenNeedsInput.value = eventToEdit.hiddenNeeds || '';
             caseJudgmentInput.value = eventToEdit.caseJudgment || '';
@@ -43,8 +45,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const year = date.substring(0, 4);
         const month = date.substring(5, 7);
         const day = date.substring(8, 10);
-        startDateInput.value = `${year}年${month}月${day}日 上午8:30`;
-        endDateInput.value = `${year}年${month}月${day}日 上午8:40`;
+        startDateInput.value = `${year}年${month}月${day}日 08:30`;
+        endDateInput.value = `${year}年${month}月${day}日 08:40`;
     }
 
     deleteButton.addEventListener('click', function() {
@@ -86,29 +88,39 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Date parsing and formatting functions (unchanged from original)
     function parseDate(dateString) {
-        const regex = /(\d{4})年(\d{1,2})月(\d{1,2})日\s*(凌晨|早上|上午|中午|下午|晚上)(\d{1,2}):(\d{2})?/;
-        const match = dateString.match(regex);
-        if (!match) return null;
-        let [, year, month, day, period, hour, minute] = match;
-        hour = parseInt(hour, 10);
-        minute = minute ? parseInt(minute, 10) : 0;
-        if ((period === '下午' || period === '中午' || period === '晚上') && hour < 12) hour += 12;
-        if ((period === '上午' || period === '早上' || period === '凌晨') && hour === 12) hour = 0;
-        return new Date(year, month - 1, day, hour, minute);
+        if (typeof dateString !== 'string') return null;
+        let m = dateString.match(/(\d{4})年(\d{1,2})月(\d{1,2})日\s*(\d{1,2}):(\d{2})/);
+        if (m) {
+            const year = parseInt(m[1], 10);
+            const month = parseInt(m[2], 10) - 1;
+            const day = parseInt(m[3], 10);
+            const hour = parseInt(m[4], 10);
+            const minute = parseInt(m[5], 10);
+            return new Date(year, month, day, hour, minute);
+        }
+        m = dateString.match(/(\d{4})年(\d{1,2})月(\d{1,2})日\s*(凌晨|早上|上午|中午|下午|晚上)(\d{1,2}):(\d{2})/);
+        if (!m) return null;
+        let year = parseInt(m[1], 10);
+        let month = parseInt(m[2], 10) - 1;
+        let day = parseInt(m[3], 10);
+        const period = m[4];
+        let hour = parseInt(m[5], 10);
+        let minute = parseInt(m[6], 10);
+        const pmLike = period === '下午' || period === '晚上' || period === '中午';
+        const amLike = period === '上午' || period === '早上' || period === '凌晨';
+        if (pmLike && hour !== 12) hour += 12;
+        if (amLike && hour === 12) hour = 0;
+        return new Date(year, month, day, hour, minute);
     }
 
     function formatScheduleDate(dateObj) {
         const year = dateObj.getFullYear();
         const month = dateObj.getMonth() + 1;
         const day = dateObj.getDate();
-        let hours = dateObj.getHours();
+        const hours = String(dateObj.getHours()).padStart(2, '0');
         const minutes = String(dateObj.getMinutes()).padStart(2, '0');
-        const ampm = hours >= 12 ? '下午' : '上午';
-        hours = hours % 12;
-        hours = hours ? hours : 12;
-        return `${year}年${month}月${day}日 ${ampm}${hours}:${minutes}`;
+        return `${year}年${month}月${day}日 ${hours}:${minutes}`;
     }
 
     function adjustAfterInsert(newEvent) {
@@ -171,12 +183,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const year = date.getFullYear();
         const month = date.getMonth() + 1;
         const day = date.getDate();
-        let hour = date.getHours();
+        const hour = String(date.getHours()).padStart(2, '0');
         const minute = String(date.getMinutes()).padStart(2, '0');
-        const period = hour < 12 ? '上午' : '下午';
-        if (hour > 12) hour -= 12;
-        if (hour === 0) hour = 12;
-        return `${year}年${month}月${day}日 ${period}${hour}:${minute}`;
+        return `${year}年${month}月${day}日 ${hour}:${minute}`;
     }
 
     // Auto-update end date when start date changes

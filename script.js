@@ -687,6 +687,7 @@ document.addEventListener('DOMContentLoaded', function () {
             monthDisplay.textContent = `${currentMonth + 1}月`;
         }
 
+        migrateEventsTo24h();
         generateCalendar();
         renderSchedule(initialDay);
 
@@ -716,6 +717,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function getStoredEvents() {
         return JSON.parse(localStorage.getItem('events')) || [];
+    }
+
+    function migrateEventsTo24h() {
+        const periodRegex = /(凌晨|早上|上午|中午|下午|晚上)/;
+        let events = getStoredEvents();
+        let changed = false;
+        for (let i = 0; i < events.length; i++) {
+            const e = events[i];
+            const sObj = parseScheduleDate(e.startDate || '');
+            const tObj = parseScheduleDate(e.endDate || '');
+            const sOld = typeof e.startDate === 'string' && periodRegex.test(e.startDate);
+            const tOld = typeof e.endDate === 'string' && periodRegex.test(e.endDate);
+            if (sObj && sOld) { e.startDate = formatScheduleDate(sObj); changed = true; }
+            if (tObj && tOld) { e.endDate = formatScheduleDate(tObj); changed = true; }
+        }
+        if (changed) localStorage.setItem('events', JSON.stringify(events));
     }
 
     function getEventRecords(eventId) {
@@ -839,13 +856,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const bDur = bEnd.getTime() - bStart.getTime();
         let changed = false;
         if (bStart.getTime() < aEnd.getTime() + bufferMs) {
-            const targetAEnd = new Date(bStart.getTime() - bufferMs);
-            const targetAStart = new Date(targetAEnd.getTime() - aDur);
-            if (targetAStart >= boundaryStart) {
-                a.startDate = formatScheduleDate(targetAStart);
-                a.endDate = formatScheduleDate(targetAEnd);
-                changed = true;
-            } else if (!b.lockStart) {
+            const preferShiftB = a.lockStart || !b.lockStart;
+            if (preferShiftB) {
                 const targetBStart = new Date(aEnd.getTime() + bufferMs);
                 const targetBEnd = new Date(targetBStart.getTime() + bDur);
                 let newDateStr = dateStr;
@@ -858,7 +870,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 b.date = newDateStr;
                 changed = true;
             } else {
-                b.needsManual = true;
+                const targetAEnd = new Date(bStart.getTime() - bufferMs);
+                const targetAStart = new Date(targetAEnd.getTime() - aDur);
+                if (targetAStart >= boundaryStart) {
+                    a.startDate = formatScheduleDate(targetAStart);
+                    a.endDate = formatScheduleDate(targetAEnd);
+                    changed = true;
+                } else {
+                    b.needsManual = true;
+                }
             }
         }
         if (changed) {
@@ -871,6 +891,40 @@ document.addEventListener('DOMContentLoaded', function () {
             tryNotify('系统通知', 'AA与BB已调整，保持5分钟缓冲');
         }
         return changed;
+    }
+
+    function enforceAfter(dateStr, anchorTitle, targetTitle) {
+        const bufferMs = 5 * 60 * 1000;
+        const all = getStoredEvents();
+        const dayEvents = all.filter(e => e.date === dateStr);
+        const anchor = dayEvents.find(e => e.title === anchorTitle || String(e.title || '').includes(anchorTitle));
+        const target = dayEvents.find(e => e.title === targetTitle || String(e.title || '').includes(targetTitle));
+        if (!anchor || !target) return false;
+        const aStart = parseScheduleDate(anchor.startDate);
+        const aEnd = parseScheduleDate(anchor.endDate);
+        const tStart = parseScheduleDate(target.startDate);
+        const tEnd = parseScheduleDate(target.endDate);
+        if (!aStart || !aEnd || !tStart || !tEnd) return false;
+        const tDur = tEnd.getTime() - tStart.getTime();
+        if (tStart.getTime() >= aEnd.getTime() + bufferMs) return false;
+        const boundaryStart = new Date(dateStr); boundaryStart.setHours(0,0,0,0);
+        const boundaryEnd = new Date(dateStr); boundaryEnd.setHours(23,59,0,0);
+        const newStart = new Date(aEnd.getTime() + bufferMs);
+        const newEnd = new Date(newStart.getTime() + tDur);
+        let newDateStr = dateStr;
+        if (newEnd > boundaryEnd) {
+            const nextDay = new Date(boundaryStart.getTime() + 24 * 60 * 60 * 1000);
+            newDateStr = `${nextDay.getFullYear()}-${String(nextDay.getMonth() + 1).padStart(2, '0')}-${String(nextDay.getDate()).padStart(2, '0')}`;
+        }
+        target.startDate = formatScheduleDate(newStart);
+        target.endDate = formatScheduleDate(newEnd);
+        target.date = newDateStr;
+        const idx = all.findIndex(e => e.id === target.id);
+        if (idx > -1) all[idx] = target;
+        localStorage.setItem('events', JSON.stringify(all));
+        resolveConflictsForDate(newDateStr);
+        tryNotify('系统通知', `${anchorTitle}优先，${targetTitle}顺延至${String(newStart.getHours()).padStart(2,'0')}:${String(newStart.getMinutes()).padStart(2,'0')}-${String(newEnd.getHours()).padStart(2,'0')}:${String(newEnd.getMinutes()).padStart(2,'0')}`);
+        return true;
     }
 
     function hasValidCheckIn(eventId) {
@@ -935,6 +989,7 @@ document.addEventListener('DOMContentLoaded', function () {
         scheduleList.innerHTML = '';
         const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         resolveConflictsForDate(dateStr);
+        enforceAfter(dateStr, 'QWA', '测试用');
         const allEvents = getStoredEvents().filter(event => event.date === dateStr);
 
         if (allEvents.length === 0) {
@@ -982,6 +1037,12 @@ document.addEventListener('DOMContentLoaded', function () {
             const itemTitle = document.createElement('div');
             itemTitle.className = 'item-title';
             itemTitle.textContent = event.title;
+            if (event.needsManual) {
+                const badge = document.createElement('span');
+                badge.textContent = '冲突';
+                badge.style.cssText = 'margin-left:8px;color:#FF3B30;font-size:12px;';
+                itemTitle.appendChild(badge);
+            }
             itemContent.appendChild(itemTitle);
 
             if (event.notes) {
@@ -1106,42 +1167,40 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function parseScheduleDate(dateStr) {
-        const match = dateStr.match(/(\d{4})年(\d{1,2})月(\d{1,2})日\s*(?:(凌晨|早上|上午|中午|下午|晚上))?\s*(\d{1,2}):(\d{2})/);
-        if (!match) return null;
-
-        let [, year, month, day, period, hours, minutes] = match;
-        year = parseInt(year);
-        month = parseInt(month) - 1;
-        day = parseInt(day);
-        hours = parseInt(hours);
-        minutes = parseInt(minutes);
-
-        const pmLike = period === '下午' || period === '晚上' || period === '中午';
-        const amLike = period === '上午' || period === '早上' || period === '凌晨';
-
-        if (pmLike && hours !== 12) {
-            hours += 12;
+        if (typeof dateStr !== 'string') return null;
+        let m = dateStr.match(/(\d{4})年(\d{1,2})月(\d{1,2})日\s*(\d{1,2}):(\d{2})/);
+        if (m) {
+            const year = parseInt(m[1]);
+            const month = parseInt(m[2]) - 1;
+            const day = parseInt(m[3]);
+            const hours = parseInt(m[4]);
+            const minutes = parseInt(m[5]);
+            return new Date(year, month, day, hours, minutes);
         }
-        if (amLike && hours === 12) {
-            hours = 0;
+        m = dateStr.match(/(\d{4})年(\d{1,2})月(\d{1,2})日\s*(?:凌晨|早上|上午|中午|下午|晚上)\s*(\d{1,2}):(\d{2})/);
+        if (m) {
+            const year = parseInt(m[1]);
+            const month = parseInt(m[2]) - 1;
+            const day = parseInt(m[3]);
+            let hours = parseInt(m[4]);
+            const minutes = parseInt(m[5]);
+            const period = (dateStr.match(/(凌晨|早上|上午|中午|下午|晚上)/) || [null])[1];
+            const pmLike = period === '下午' || period === '晚上' || period === '中午';
+            const amLike = period === '上午' || period === '早上' || period === '凌晨';
+            if (pmLike && hours !== 12) hours += 12;
+            if (amLike && hours === 12) hours = 0;
+            return new Date(year, month, day, hours, minutes);
         }
-
-        return new Date(year, month, day, hours, minutes);
+        return null;
     }
 
     function formatScheduleDate(dateObj) {
         const year = dateObj.getFullYear();
         const month = dateObj.getMonth() + 1;
         const day = dateObj.getDate();
-        
-        let hours = dateObj.getHours();
+        const hours = String(dateObj.getHours()).padStart(2, '0');
         const minutes = String(dateObj.getMinutes()).padStart(2, '0');
-        const ampm = hours >= 12 ? '下午' : '上午';
-
-        hours = hours % 12;
-        hours = hours ? hours : 12;
-
-        return `${year}年${month}月${day}日 ${ampm}${hours}:${minutes}`;
+        return `${year}年${month}月${day}日 ${hours}:${minutes}`;
     }
 
     function updateEventDataAfterDrop(draggingItem) {
