@@ -38,10 +38,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // 根据URL参数设置初始状态
     if (type === 'check-out') {
         checkInOutText.textContent = '离场打卡';
-        checkInOutBtn.classList.add('checked-in');
     } else {
         checkInOutText.textContent = '外勤打卡';
-        checkInOutBtn.classList.remove('checked-in');
     }
 
     function takePicture() {
@@ -89,16 +87,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return validType && validTime;
     }
 
-    function applyButtonColorByRecords(records) {
-        checkInOutBtn.classList.remove('has-records');
-        if (type === 'check-out') {
-            checkInOutBtn.classList.add('checked-in');
-        } else {
-            checkInOutBtn.classList.remove('checked-in');
-            if (records.length > 0) {
-                checkInOutBtn.classList.add('has-records');
-            }
-        }
+    function applyButtonColorByRecords(count) {
+        checkInOutBtn.classList.toggle('has-records', count > 0);
     }
 
     function loadCheckInState() {
@@ -109,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
             records.sort((a, b) => a.time.localeCompare(b.time));
             records.forEach(record => addHistoryRecord(record.type, record.time, record.photoSrc, false));
         }
-        applyButtonColorByRecords(records);
+        applyButtonColorByRecords(records.length);
         photoUploadContainer.style.display = 'none';
     }
 
@@ -185,8 +175,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const time = formatDateTime(recordDateTime);
             const recordType = (type === 'check-out') ? '离场打卡' : '到场打卡';
             addHistoryRecord(recordType, time, photoSrc);
-            const updated = (JSON.parse(localStorage.getItem(getStorageKey())) || []).filter(isValidRecord);
-            applyButtonColorByRecords(updated);
+            const updated = JSON.parse(localStorage.getItem(getStorageKey())) || [];
+            const validUpdated = updated.filter(isValidRecord);
+            applyButtonColorByRecords(validUpdated.length);
 
             photoUploadContainer.style.display = 'none';
             stopCamera();
