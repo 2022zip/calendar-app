@@ -826,17 +826,25 @@ document.addEventListener('DOMContentLoaded', function () {
 
             item.appendChild(itemTime);
 
-            const checkInButton = document.createElement('a');
-            checkInButton.href = `check_in.html?eventId=${event.id}&date=${event.date}&type=check-in`;
-            checkInButton.textContent = '到场打卡';
-            checkInButton.classList.add('check-in-btn');
-            item.appendChild(checkInButton);
+            const shouldShowButtons = (() => {
+                const text = `${event.title || ''}${event.notes || ''}`;
+                const keywords = ['现场','访谈','公司','合同','同区客户'];
+                return keywords.some(k => text.includes(k));
+            })();
 
-            const checkOutButton = document.createElement('a');
-            checkOutButton.href = `check_in.html?eventId=${event.id}&date=${event.date}&type=check-out`;
-            checkOutButton.textContent = '离场打卡';
-            checkOutButton.classList.add('check-out-btn');
-            item.appendChild(checkOutButton);
+            if (shouldShowButtons) {
+                const checkInButton = document.createElement('a');
+                checkInButton.href = `check_in.html?eventId=${event.id}&date=${event.date}&type=check-in&eventTitle=${encodeURIComponent(event.title)}`;
+                checkInButton.textContent = '到场打卡';
+                checkInButton.classList.add('check-in-btn');
+                item.appendChild(checkInButton);
+
+                const checkOutButton = document.createElement('a');
+                checkOutButton.href = `check_in.html?eventId=${event.id}&date=${event.date}&type=check-out&eventTitle=${encodeURIComponent(event.title)}`;
+                checkOutButton.textContent = '离场打卡';
+                checkOutButton.classList.add('check-out-btn');
+                item.appendChild(checkOutButton);
+            }
 
             scheduleList.appendChild(item);
 
@@ -850,7 +858,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (checkOutBtn) itemActions.appendChild(checkOutBtn);
 
             const timeElement = item.querySelector('.item-time');
-            if (timeElement) {
+            if (timeElement && itemActions.childElementCount > 0) {
                 item.insertBefore(itemActions, timeElement);
             }
         });
