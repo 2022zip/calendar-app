@@ -693,6 +693,17 @@ document.addEventListener('DOMContentLoaded', function () {
         return JSON.parse(localStorage.getItem('events')) || [];
     }
 
+    function hasValidCheckIn(eventId) {
+        try {
+            const key = `checkInRecords_${eventId}`;
+            const records = JSON.parse(localStorage.getItem(key)) || [];
+            if (!Array.isArray(records)) return false;
+            return records.some(r => r && r.type === '到场打卡' && typeof r.time === 'string');
+        } catch (e) {
+            return false;
+        }
+    }
+
     function generateCalendar() {
         daysGrid.innerHTML = '';
         const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
@@ -837,6 +848,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 checkInButton.href = `check_in.html?eventId=${event.id}&date=${event.date}&type=check-in&eventTitle=${encodeURIComponent(event.title)}`;
                 checkInButton.textContent = '到场打卡';
                 checkInButton.classList.add('check-in-btn');
+                if (hasValidCheckIn(event.id)) {
+                    checkInButton.classList.add('has-record');
+                }
                 item.appendChild(checkInButton);
 
                 const checkOutButton = document.createElement('a');

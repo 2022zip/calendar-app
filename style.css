@@ -183,3 +183,7 @@ hr {
     border-radius: 12px;
     font-size: 12px;
 }
+
+.check-in-btn.has-record {
+    background-color: #4CAF50;
+}
