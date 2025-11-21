@@ -16,12 +16,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const urlParams = new URLSearchParams(window.location.search);
     const eventId = urlParams.get('eventId');
-    const date = urlParams.get('date');
-    const eventTitle = urlParams.get('eventTitle');
-    if (eventTitle) {
-        document.getElementById('event-title').textContent = decodeURIComponent(eventTitle);
+    const dateParam = urlParams.get('date');
+    const eventTitleParam = urlParams.get('eventTitle');
+
+    function resolveEventContext() {
+        const events = JSON.parse(localStorage.getItem('events')) || [];
+        const matched = events.find(e => e.id === eventId);
+        const safeTitle = (matched && matched.title) || (eventTitleParam ? decodeURIComponent(eventTitleParam) : '外勤打卡');
+        const safeDate = (dateParam) || (matched && matched.date) || '';
+        return { matched, safeTitle, safeDate };
     }
-    document.getElementById('event-date').textContent = date;
+
+    const { matched, safeTitle, safeDate } = resolveEventContext();
+    document.getElementById('event-title').textContent = safeTitle;
+    document.getElementById('event-date').textContent = safeDate;
 
     const type = urlParams.get('type'); // 'check-in' or 'check-out'
 
@@ -71,17 +79,24 @@ document.addEventListener('DOMContentLoaded', () => {
     updateCurrentTime();
 
     function getStorageKey() {
-        return `checkInRecords_${eventId}`;
+        return `checkInRecords_${eventId || 'unknown'}`;
+    }
+
+    function isValidRecord(r) {
+        if (!r || typeof r !== 'object') return false;
+        const validType = r.type === '到场打卡' || r.type === '离场打卡';
+        const validTime = typeof r.time === 'string' && /\d{4}\/\d{2}\/\d{2}\s\d{2}:\d{2}:\d{2}/.test(r.time);
+        return validType && validTime;
     }
 
     function loadCheckInState() {
-        const records = JSON.parse(localStorage.getItem(getStorageKey())) || [];
+        const rawRecords = JSON.parse(localStorage.getItem(getStorageKey())) || [];
+        const records = rawRecords.filter(isValidRecord);
         if (records.length > 0) {
             noRecordsPlaceholder.style.display = 'none';
             records.sort((a, b) => a.time.localeCompare(b.time));
             records.forEach(record => addHistoryRecord(record.type, record.time, record.photoSrc, false));
         }
-        // 无论如何，初始加载时都隐藏拍照区
         photoUploadContainer.style.display = 'none';
     }
 
@@ -152,7 +167,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (photoSrc) {
             const now = new Date();
             const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
-            const recordDateTime = new Date(`${date} ${timeString}`);
+            const baseDate = safeDate || `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+            const recordDateTime = new Date(`${baseDate} ${timeString}`);
             const time = formatDateTime(recordDateTime);
             const recordType = (type === 'check-out') ? '离场打卡' : '到场打卡';
             addHistoryRecord(recordType, time, photoSrc);
@@ -168,8 +184,8 @@ document.addEventListener('DOMContentLoaded', () => {
     backBtn.addEventListener('click', (e) => {
         e.preventDefault();
         stopCamera();
-        if (date) {
-            window.location.href = `index.html#date=${date}`;
+        if (safeDate) {
+            window.location.href = `index.html#date=${safeDate}`;
         } else {
             window.history.back();
         }
