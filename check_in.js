@@ -1,65 +1,135 @@
-document.addEventListener('DOMContentLoaded', function () {
+
+document.addEventListener('DOMContentLoaded', () => {
     const checkInOutBtn = document.getElementById('check-in-out-btn');
     const checkInOutText = document.getElementById('check-in-out-text');
-    const currentTime = document.getElementById('current-time');
-    const backButton = document.querySelector('.back-btn');
+    const currentTimeSpan = document.getElementById('current-time');
+    const backBtn = document.getElementById('back-btn');
 
     const cameraStream = document.getElementById('camera-stream');
-    const captureBtn = document.getElementById('capture-btn');
     const canvas = document.getElementById('canvas');
     const photo = document.getElementById('photo');
-    const photoBox = document.querySelector('.photo-box');
+    const captureBtn = document.getElementById('capture-btn');
+    const photoUploadContainer = document.querySelector('.photo-upload-container');
 
-    const historyRecords = document.getElementById('history-records');
-
-    const eventTitle = document.getElementById('event-title');
-    const eventDate = document.getElementById('event-date');
+    const historyRecordsContainer = document.getElementById('history-records');
+    const noRecordsPlaceholder = document.getElementById('no-records-placeholder');
 
     const urlParams = new URLSearchParams(window.location.search);
-    const eventId = urlParams.get('id');
+    const eventId = urlParams.get('eventId');
     const date = urlParams.get('date');
+    const eventTitle = urlParams.get('eventTitle');
+    if (eventTitle) {
+        document.getElementById('event-title').textContent = decodeURIComponent(eventTitle);
+    }
+    document.getElementById('event-date').textContent = date;
 
-    if (eventId) {
-        let events = JSON.parse(localStorage.getItem('events')) || [];
-        const eventToDisplay = events.find(e => e.id === eventId);
-        if (eventToDisplay) {
-            eventTitle.textContent = eventToDisplay.title;
+    const type = urlParams.get('type'); // 'check-in' or 'check-out'
+
+    let stream;
+
+    // 根据URL参数设置初始状态
+    if (type === 'check-out') {
+        checkInOutText.textContent = '离场打卡';
+        checkInOutBtn.classList.add('checked-in');
+    } else {
+        checkInOutText.textContent = '外勤打卡';
+        checkInOutBtn.classList.remove('checked-in');
+    }
+
+    function takePicture() {
+        if (!stream || cameraStream.style.display === 'none') {
+            console.error('Camera is not active.');
+            return null;
+        }
+        canvas.width = cameraStream.videoWidth;
+        canvas.height = cameraStream.videoHeight;
+        const context = canvas.getContext('2d');
+        context.drawImage(cameraStream, 0, 0, canvas.width, canvas.height);
+        const photoSrc = canvas.toDataURL('image/png');
+        photo.src = photoSrc;
+        photo.style.display = 'block';
+        stopCamera(); // 拍照后立即停止摄像头
+        return photoSrc;
+    }
+
+    function formatDateTime(date) {
+        const year = date.getFullYear();
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        const seconds = date.getSeconds().toString().padStart(2, '0');
+        return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
+    }
+
+    function updateCurrentTime() {
+        const now = new Date();
+        currentTimeSpan.textContent = formatDateTime(now).split(' ')[1];
+    }
+
+    setInterval(updateCurrentTime, 1000);
+    updateCurrentTime();
+
+    function getStorageKey() {
+        return `checkInRecords_${eventId}`;
+    }
+
+    function loadCheckInState() {
+        const records = JSON.parse(localStorage.getItem(getStorageKey())) || [];
+        if (records.length > 0) {
+            noRecordsPlaceholder.style.display = 'none';
+            records.sort((a, b) => a.time.localeCompare(b.time));
+            records.forEach(record => addHistoryRecord(record.type, record.time, record.photoSrc, false));
+        }
+        // 无论如何，初始加载时都隐藏拍照区
+        photoUploadContainer.style.display = 'none';
+    }
+
+    function saveHistory(records) {
+        localStorage.setItem(getStorageKey(), JSON.stringify(records));
+    }
+
+    function addHistoryRecord(type, time, photoSrc, save = true) {
+        noRecordsPlaceholder.style.display = 'none';
+        const records = JSON.parse(localStorage.getItem(getStorageKey())) || [];
+
+        const recordElement = document.createElement('div');
+        recordElement.classList.add('history-item');
+
+        const details = document.createElement('div');
+        details.classList.add('history-details');
+        details.innerHTML = `
+            <p class="record-time">${time}</p>
+            <p class="record-type">${type}</p>
+        `;
+        recordElement.appendChild(details);
+
+        if (photoSrc) {
+            const img = document.createElement('img');
+            img.src = photoSrc;
+            img.classList.add('history-photo');
+            recordElement.appendChild(img);
+        }
+
+        historyRecordsContainer.appendChild(recordElement);
+
+        if (save) {
+            records.push({ type, time, photoSrc });
+            saveHistory(records);
         }
     }
 
-    if (date) {
-        eventDate.textContent = date;
-    }
-
-    let stream;
-    let checkInState = 'in'; // 'in' or 'out'
-
-    function updateTime() {
-        const now = new Date();
-        currentTime.textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    }
-
     async function startCamera() {
-        if (stream) return;
         try {
             stream = await navigator.mediaDevices.getUserMedia({ video: true });
             cameraStream.srcObject = stream;
             cameraStream.style.display = 'block';
             captureBtn.style.display = 'block';
+            photo.style.display = 'none';
         } catch (err) {
-            console.error('Error accessing camera:', err);
+            console.error("Error accessing camera: ", err);
+            alert('无法访问摄像头，请检查权限。');
         }
-    }
-
-    function takePicture() {
-        const context = canvas.getContext('2d');
-        canvas.width = cameraStream.videoWidth;
-        canvas.height = cameraStream.videoHeight;
-        context.drawImage(cameraStream, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL('image/png');
-        photo.src = dataUrl;
-        photo.style.display = 'block';
-        return dataUrl;
     }
 
     function stopCamera() {
@@ -70,106 +140,42 @@ document.addEventListener('DOMContentLoaded', function () {
         captureBtn.style.display = 'none';
     }
 
-    function addHistoryRecord(type, time, photoSrc, save = true) {
-        const record = document.createElement('div');
-        record.classList.add('history-record');
 
-        const timeline = document.createElement('div');
-        timeline.classList.add('timeline');
 
-        const recordContent = document.createElement('div');
-        recordContent.classList.add('record-content');
+    checkInOutBtn.addEventListener('click', () => {
+        photoUploadContainer.style.display = 'block';
+        startCamera();
+    });
 
-        const recordType = document.createElement('p');
-        recordType.textContent = type;
+    captureBtn.addEventListener('click', () => {
+        const photoSrc = takePicture();
+        if (photoSrc) {
+            const now = new Date();
+            const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+            const recordDateTime = new Date(`${date} ${timeString}`);
+            const time = formatDateTime(recordDateTime);
+            const recordType = (type === 'check-out') ? '离场打卡' : '到场打卡';
+            addHistoryRecord(recordType, time, photoSrc);
 
-        const recordTime = document.createElement('p');
-        recordTime.textContent = time;
-
-        const recordPhoto = document.createElement('img');
-        recordPhoto.src = photoSrc;
-
-        recordType.classList.add(type === '到场打卡' ? 'arrival' : 'departure');
-        recordContent.appendChild(recordType);
-        recordContent.appendChild(recordTime);
-        recordContent.appendChild(recordPhoto);
-
-        record.appendChild(timeline);
-        record.appendChild(recordContent);
-
-        const placeholder = document.getElementById('no-records-placeholder');
-        if (placeholder) {
-            placeholder.remove();
-        }
-        historyRecords.insertBefore(record, historyRecords.firstChild);
-
-        if (save) {
-            let history = JSON.parse(localStorage.getItem('checkInHistory')) || {};
-            if (!history[eventId]) {
-                history[eventId] = [];
-            }
-            history[eventId].unshift({ type, time, photoSrc });
-            localStorage.setItem('checkInHistory', JSON.stringify(history));
-        }
-    }
-
-    function loadHistoryRecords() {
-        let history = JSON.parse(localStorage.getItem('checkInHistory')) || {};
-        if (history[eventId]) {
-            const records = history[eventId];
-            records.forEach(record => {
-                addHistoryRecord(record.type, record.time, record.photoSrc, false);
-            });
-        }
-    }
-
-    checkInOutBtn.addEventListener('click', function () {
-        if (checkInState === 'out') {
-            checkInState = 'in';
-            this.classList.add('checked-in');
-            checkInOutText.textContent = '到场打卡';
-            currentTime.style.display = 'block';
-            startCamera();
+            photoUploadContainer.style.display = 'none';
+            stopCamera();
+            photo.src = ''; 
         } else {
-            startCamera();
+            alert('拍照失败，请重试。');
         }
     });
 
-    photoBox.addEventListener('click', function() {
-        if (checkInState === 'in' && !stream) {
-            startCamera();
-        }
-    });
-
-    captureBtn.addEventListener('click', function() {
-        const now = new Date();
-        const timeString = now.toLocaleString();
-        const arrivalRecords = historyRecords.querySelectorAll('.arrival').length;
-        const departureRecords = historyRecords.querySelectorAll('.departure').length;
-        let type;
-
-        if (arrivalRecords < 3) {
-            type = '到场打卡';
-        } else if (departureRecords < 1) {
-            type = '离场打卡';
-        } else {
-            // Optional: handle case where all check-ins are done
-            return; // Or show a message
-        }
-
-        const photoDataUrl = takePicture();
-        addHistoryRecord(type, timeString, photoDataUrl);
-    });
-
-    backButton.addEventListener('click', function (event) {
-        event.preventDefault();
+    backBtn.addEventListener('click', (e) => {
+        e.preventDefault();
         stopCamera();
-        window.location.href = `index.html?date=${date}`;
+        if (date) {
+            window.location.href = `index.html#date=${date}`;
+        } else {
+            window.history.back();
+        }
     });
 
-    // Set initial state to checked-out
-    checkInOutBtn.classList.remove('checked-in');
-    currentTime.style.display = 'none';
-    loadHistoryRecords();
-    setInterval(updateTime, 1000);
+    if (eventId) {
+        loadCheckInState();
+    }
 });

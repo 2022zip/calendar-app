@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>打卡</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>外勤打卡</title>
     <link rel="stylesheet" href="check_in.css">
 </head>
 <body>
     <header>
-        <a href="#" class="back-btn">返回</a>
+        <a href="#" id="back-btn" class="back-btn">返回</a>
         <div id="event-info">
             <h1 id="event-title">外勤打卡</h1>
             <p id="event-date"></p>
@@ -17,7 +17,7 @@
     <main>
         <div class="check-in-container">
             <button id="check-in-out-btn">
-                <span id="check-in-out-text">到场打卡</span>
+                <span id="check-in-out-text">外勤打卡</span>
                 <span id="current-time"></span>
             </button>
         </div>
@@ -27,7 +27,7 @@
             <div class="photo-box">
                 <video id="camera-stream" autoplay style="display:none;"></video>
                 <canvas id="canvas" style="display:none;"></canvas>
-                <img id="photo" />
+                <img id="photo" style="display:none;" />
                 <button id="capture-btn" style="display:none;">拍照</button>
             </div>
         </div>

@@ -6,61 +6,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let currentYear, currentMonth;
 
-    function initialize() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const dateParam = urlParams.get('date');
-        let initialDay;
-
-        if (dateParam) {
-            const parts = dateParam.split('-').map(p => parseInt(p, 10));
-            if (parts.length === 3 && !parts.some(isNaN)) {
-                currentYear = parts[0];
-                currentMonth = parts[1] - 1;
-                initialDay = parts[2];
-            } else {
-                const today = new Date();
-                currentYear = today.getFullYear();
-                currentMonth = today.getMonth();
-                initialDay = today.getDate();
-            }
-        } else {
-            currentYear = 2025;
-            currentMonth = 6; // July
-            initialDay = 2;
-        }
-
-        if (yearDisplay) {
-            yearDisplay.innerHTML = `&lt; ${currentYear}年`;
-        }
-        if (monthDisplay) {
-            monthDisplay.textContent = `${currentMonth + 1}月`;
-        }
-
-        generateCalendar();
-        renderSchedule(initialDay);
-
-        // Highlight the correct day in the calendar without simulating a click
-        const currentSelected = daysGrid.querySelector('.today');
-        if (currentSelected) {
-            currentSelected.classList.remove('today');
-        }
-        const dayToSelect = Array.from(daysGrid.querySelectorAll('.day')).find(d => d.textContent == initialDay);
-        if (dayToSelect) {
-            dayToSelect.classList.add('today');
-        }
-
-        // Update the 'Add Event' button link
-        const selectedDate = new Date(currentYear, currentMonth, initialDay);
-        const formattedDate = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
-        const addEventBtn = document.getElementById('add-event-btn');
-        if (addEventBtn) {
-            addEventBtn.href = `add_event.html?date=${formattedDate}`;
-        }
-    }
-
-    initialize();
-
-    // One-time migration of hardcoded events to localStorage
     if (!localStorage.getItem('migration_done_v6')) {
         const hardcodedEvents = [
             {
@@ -682,9 +627,67 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
+
         localStorage.setItem('events', JSON.stringify(events));
         localStorage.setItem('migration_done_v6', 'true');
     }
+    function initialize() {
+        const hashParams = new URLSearchParams(window.location.hash ? window.location.hash.slice(1) : '');
+        const urlParams = new URLSearchParams(window.location.search);
+        const dateParam = urlParams.get('date') || hashParams.get('date');
+        let initialDay;
+
+        if (dateParam) {
+            const parts = dateParam.split('-').map(p => parseInt(p, 10));
+            if (parts.length === 3 && !parts.some(isNaN)) {
+                currentYear = parts[0];
+                currentMonth = parts[1] - 1;
+                initialDay = parts[2];
+            } else {
+                const today = new Date();
+                currentYear = today.getFullYear();
+                currentMonth = today.getMonth();
+                initialDay = today.getDate();
+            }
+        } else {
+            currentYear = 2025;
+            currentMonth = 6; // July
+            initialDay = 2;
+        }
+
+        if (yearDisplay) {
+            yearDisplay.innerHTML = `&lt; ${currentYear}年`;
+        }
+        if (monthDisplay) {
+            monthDisplay.textContent = `${currentMonth + 1}月`;
+        }
+
+        generateCalendar();
+        renderSchedule(initialDay);
+
+        // Highlight the correct day in the calendar without simulating a click
+        const currentSelected = daysGrid.querySelector('.today');
+        if (currentSelected) {
+            currentSelected.classList.remove('today');
+        }
+        const dayToSelect = Array.from(daysGrid.querySelectorAll('.day')).find(d => d.textContent == initialDay);
+        if (dayToSelect) {
+            dayToSelect.classList.add('today');
+            // Scroll to the selected day
+            dayToSelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // Update the 'Add Event' button link
+        const selectedDate = new Date(currentYear, currentMonth, initialDay);
+        const formattedDate = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
+        const addEventBtn = document.getElementById('add-event-btn');
+        if (addEventBtn) {
+            addEventBtn.href = `add_event.html?date=${formattedDate}`;
+        }
+    }
+
+    window.addEventListener('hashchange', initialize);
+    initialize();
 
     function getStoredEvents() {
         return JSON.parse(localStorage.getItem('events')) || [];
@@ -704,9 +707,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const dayDiv = document.createElement('div');
             dayDiv.classList.add('day');
             dayDiv.textContent = i;
-            if (i === 2 && currentMonth === 6 && currentYear === 2025) { // July 2nd, 2025
-                dayDiv.classList.add('today');
-            }
+            
 
             const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
             const hasEvent = storedEvents.some(event => event.date === dateStr);
@@ -755,8 +756,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const checkedInEvents = JSON.parse(localStorage.getItem('checkedInEvents')) || {};
-        const checkInRecords = JSON.parse(localStorage.getItem('checkInRecords')) || {};
+
 
         allEvents.sort((a, b) => {
             const dateA = parseScheduleDate(a.startDate);
@@ -773,7 +773,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (event.id) {
                 item.style.cursor = 'pointer';
-                item.addEventListener('click', () => {
+                item.addEventListener('click', (e) => {
+                    // Stop propagation to prevent the event from bubbling up to the parent
+                    e.stopPropagation();
                     window.location.href = `add_event.html?id=${event.id}`;
                 });
             }
@@ -820,42 +822,37 @@ document.addEventListener('DOMContentLoaded', function () {
             item.appendChild(colorBar);
             item.appendChild(itemContent);
 
-            // Add depart button if title contains keywords
-            const keywords = ["合同", "现场", "公司", "机动沟通", "轻触达"];
-            if (event.title && keywords.some(keyword => event.title.includes(keyword))) {
-                const buttonContainer = document.createElement('div');
-                buttonContainer.className = 'button-container';
 
-                const arrivalButton = document.createElement('div');
-                arrivalButton.classList.add('depart-button');
-                arrivalButton.textContent = '到场打卡';
-                if ((checkedInEvents[event.id] && checkedInEvents[event.id].arrival) || (checkInRecords[event.id] && checkInRecords[event.id].some(r => r.type === 'arrival'))) {
-                    arrivalButton.classList.add('checked-in');
-                }
-                arrivalButton.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    window.location.href = `check_in.html?date=${dateStr}&eventId=${event.id}&type=arrival`;
-                });
-
-                const departureButton = document.createElement('div');
-                departureButton.classList.add('depart-button');
-                departureButton.textContent = '离场打卡';
-                if ((checkedInEvents[event.id] && checkedInEvents[event.id].departure) || (checkInRecords[event.id] && checkInRecords[event.id].some(r => r.type === 'departure'))) {
-                    departureButton.classList.add('checked-in');
-                }
-                departureButton.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    window.location.href = `check_in.html?date=${dateStr}&eventId=${event.id}&type=departure`;
-                });
-
-                buttonContainer.appendChild(arrivalButton);
-                buttonContainer.appendChild(departureButton);
-                item.appendChild(buttonContainer);
-            }
 
             item.appendChild(itemTime);
 
+            const checkInButton = document.createElement('a');
+            checkInButton.href = `check_in.html?eventId=${event.id}&date=${event.date}&type=check-in`;
+            checkInButton.textContent = '到场打卡';
+            checkInButton.classList.add('check-in-btn');
+            item.appendChild(checkInButton);
+
+            const checkOutButton = document.createElement('a');
+            checkOutButton.href = `check_in.html?eventId=${event.id}&date=${event.date}&type=check-out`;
+            checkOutButton.textContent = '离场打卡';
+            checkOutButton.classList.add('check-out-btn');
+            item.appendChild(checkOutButton);
+
             scheduleList.appendChild(item);
+
+            const itemActions = document.createElement('div');
+            itemActions.className = 'item-actions';
+
+            const checkInBtn = item.querySelector('.check-in-btn');
+            const checkOutBtn = item.querySelector('.check-out-btn');
+
+            if (checkInBtn) itemActions.appendChild(checkInBtn);
+            if (checkOutBtn) itemActions.appendChild(checkOutBtn);
+
+            const timeElement = item.querySelector('.item-time');
+            if (timeElement) {
+                item.insertBefore(itemActions, timeElement);
+            }
         });
     }
 
