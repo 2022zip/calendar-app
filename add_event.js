@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('search-nearby-customers-btn').addEventListener('click', function() {
         const date = extractDate(startDateInput.value);
-        window.location.href = `map_view.html?id=${eventId}&date=${date}`;
+        window.location.href = `nearby_search.html?id=${eventId}&date=${date}`;
     });
 
 

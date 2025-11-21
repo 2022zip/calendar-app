@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let currentYear, currentMonth;
 
-    if (!localStorage.getItem('migration_done_v6')) {
+    if (!localStorage.getItem('migration_done_v6') || !(JSON.parse(localStorage.getItem('events')) || []).length) {
         const hardcodedEvents = [
             {
                 id: 'event-1',

@@ -3,7 +3,6 @@ body {
     margin: 0;
     background-color: #f4f4f4;
 }
-
 .container {
     background-color: #fff;
     width: 92%;
@@ -13,7 +12,6 @@ body {
     border-radius: 28px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.12);
 }
-
 .header {
     position: sticky;
     top: 0;
@@ -23,37 +21,25 @@ body {
     background-color: #fff;
     z-index: 100;
 }
-
-.back-link {
-    text-align: left;
-}
-
+.back-link,
 .calendar-link {
-    text-align: right;
     color: #007bff;
     text-decoration: none;
 }
-
-.back-link {
-    text-decoration: none;
-    color: #007bff;
-    font-size: 16px;
-}
-
 .title {
     font-size: 24px;
     font-weight: bold;
     margin-top: 12px;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
     text-align: center;
 }
-
-.ctrip-placeholder {
+.title { margin-bottom: 20px; }
+.map-placeholder {
     border-radius: 20px;
     overflow: hidden;
     box-shadow: 0 6px 16px rgba(0,0,0,0.12);
 }
-.ctrip-placeholder img {
+.map-placeholder img {
     width: 100%;
     height: auto;
     display: block;

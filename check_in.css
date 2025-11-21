@@ -2,17 +2,28 @@
 body {
     font-family: sans-serif;
     margin: 0;
-    padding: 20px;
+    padding: 0;
     background-color: #f4f4f4;
     color: #333;
 }
 
+.container {
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    background-color: #fff;
+    min-height: 100vh;
+}
+
 header {
+    position: sticky;
+    top: 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 20px;
-    position: relative;
+    padding: 12px 16px;
+    background-color: #fff;
+    z-index: 100;
 }
 
 #back-btn {
@@ -22,32 +33,19 @@ header {
     cursor: pointer;
 }
 
-header h1 {
-    font-size: 20px;
-    margin: 0;
-}
+header h1 { font-size: 20px; margin: 0; }
 
-#event-info {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    text-align: center;
-}
+#event-info { flex: 1; text-align: center; }
 
 main {
-    padding: 20px;
+    padding: 16px;
 }
 
-.check-in-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-bottom: 40px;
-}
+.check-in-container { display: flex; justify-content: center; align-items: center; margin-bottom: 24px; }
 
 #check-in-out-btn {
-    width: 150px;
-    height: 150px;
+    width: 160px;
+    height: 160px;
     border-radius: 50%;
     background-color: #007bff;
     color: white;
@@ -66,21 +64,14 @@ main {
     background-color: #4CAF50;
 }
 
-#check-in-out-text {
-    font-size: 22px;
-    font-weight: bold;
-}
+#check-in-out-text { font-size: 22px; font-weight: bold; }
 
 #current-time {
     font-size: 16px;
     margin-top: 5px;
 }
 
-.photo-upload-container, .history-container {
-    padding: 20px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-}
+.photo-upload-container, .history-container { padding: 16px; border-radius: 12px; margin-bottom: 16px; }
 
 .photo-upload-container h2, .history-container h2 {
     margin-top: 0;
@@ -97,13 +88,7 @@ main {
     gap: 10px;
 }
 
-#camera-stream, #photo {
-    width: 100%;
-    max-width: 300px;
-    height: auto;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-}
+#camera-stream, #photo { width: 100%; max-width: 360px; height: auto; border: 1px solid #ddd; border-radius: 8px; }
 
 #capture-btn {
     padding: 10px 20px;
@@ -115,10 +100,7 @@ main {
     font-size: 16px;
 }
 
-#history-records {
-    max-height: 300px;
-    overflow-y: auto;
-}
+#history-records { max-height: 360px; overflow-y: auto; }
 
 .history-item {
     display: flex;
@@ -147,16 +129,25 @@ main {
     color: #777;
 }
 
-.history-photo {
-    width: 80px;
-    height: 60px;
-    object-fit: cover;
-    border-radius: 4px;
-    border: 1px solid #ddd;
-}
+.history-photo { width: 96px; height: 72px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd; }
 
 #no-records-placeholder {
     text-align: center;
     color: #999;
     padding: 20px;
+}
+
+@media (max-width: 360px) {
+    .container { max-width: 360px; }
+    header h1 { font-size: 18px; }
+    #check-in-out-btn { width: 130px; height: 130px; }
+    #check-in-out-text { font-size: 20px; }
+    .photo-upload-container, .history-container { padding: 12px; }
+    #camera-stream, #photo { max-width: 280px; border-radius: 6px; }
+    .history-photo { width: 80px; height: 60px; border-radius: 6px; }
+}
+
+@media (min-width: 768px) {
+    .container { max-width: 560px; }
+    #check-in-out-btn { width: 180px; height: 180px; }
 }
