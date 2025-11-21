@@ -89,6 +89,18 @@ document.addEventListener('DOMContentLoaded', () => {
         return validType && validTime;
     }
 
+    function applyButtonColorByRecords(records) {
+        checkInOutBtn.classList.remove('has-records');
+        if (type === 'check-out') {
+            checkInOutBtn.classList.add('checked-in');
+        } else {
+            checkInOutBtn.classList.remove('checked-in');
+            if (records.length > 0) {
+                checkInOutBtn.classList.add('has-records');
+            }
+        }
+    }
+
     function loadCheckInState() {
         const rawRecords = JSON.parse(localStorage.getItem(getStorageKey())) || [];
         const records = rawRecords.filter(isValidRecord);
@@ -97,6 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
             records.sort((a, b) => a.time.localeCompare(b.time));
             records.forEach(record => addHistoryRecord(record.type, record.time, record.photoSrc, false));
         }
+        applyButtonColorByRecords(records);
         photoUploadContainer.style.display = 'none';
     }
 
@@ -172,6 +185,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const time = formatDateTime(recordDateTime);
             const recordType = (type === 'check-out') ? '离场打卡' : '到场打卡';
             addHistoryRecord(recordType, time, photoSrc);
+            const updated = (JSON.parse(localStorage.getItem(getStorageKey())) || []).filter(isValidRecord);
+            applyButtonColorByRecords(updated);
 
             photoUploadContainer.style.display = 'none';
             stopCamera();

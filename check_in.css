@@ -49,7 +49,7 @@ main {
     width: 150px;
     height: 150px;
     border-radius: 50%;
-    background-color: #4CAF50;
+    background-color: #007aff;
     color: white;
     border: none;
     cursor: pointer;
@@ -60,6 +60,10 @@ main {
     font-size: 18px;
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     transition: background-color 0.3s;
+}
+
+#check-in-out-btn.has-records {
+    background-color: #4CAF50;
 }
 
 #check-in-out-btn.checked-in {
