@@ -36,6 +36,18 @@ header {
     gap: 12px;
 }
 
+.excel-import-btn {
+    background-color: #2CB87D;
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+}
+.excel-import-btn:hover { background-color: #25a26f; }
+
 .icon {
     text-decoration: none;
     color: #007aff;

@@ -14,6 +14,8 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     cancelDeleteButton.addEventListener('click', function () {
-        window.location.href = `add_event.html?id=${eventId}`;
+        const dateForReturn = date || '';
+        const suffix = dateForReturn ? `&date=${dateForReturn}` : '';
+        window.location.href = `add_event.html?id=${eventId}${suffix}`;
     });
 });

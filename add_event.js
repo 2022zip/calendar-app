@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const urlParams = new URLSearchParams(window.location.search);
     const eventId = urlParams.get('id');
-    const date = urlParams.get('date');
+    const originDate = urlParams.get('date');
 
     function extractDate(dateString) {
         const match = dateString.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
@@ -41,17 +41,17 @@ document.addEventListener('DOMContentLoaded', function () {
             caseJudgmentInput.value = eventToEdit.caseJudgment || '';
             summaryInput.value = eventToEdit.summary || '';
         }
-    } else if (date) {
-        const year = date.substring(0, 4);
-        const month = date.substring(5, 7);
-        const day = date.substring(8, 10);
+    } else if (originDate) {
+        const year = originDate.substring(0, 4);
+        const month = originDate.substring(5, 7);
+        const day = originDate.substring(8, 10);
         startDateInput.value = `${year}年${month}月${day}日 08:30`;
         endDateInput.value = `${year}年${month}月${day}日 08:40`;
     }
 
     deleteButton.addEventListener('click', function() {
-        const dateOfDeletedEvent = extractDate(startDateInput.value);
-        window.location.href = `delete_confirm.html?id=${eventId}&date=${dateOfDeletedEvent}`;
+        const dateForReturn = originDate || extractDate(startDateInput.value);
+        window.location.href = `delete_confirm.html?id=${eventId}&date=${dateForReturn}`;
     });
 
     document.getElementById('search-nearby-customers-btn').addEventListener('click', function() {
@@ -64,8 +64,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (cancelButton) {
         cancelButton.addEventListener('click', function (event) {
             event.preventDefault();
-            const date = extractDate(startDateInput.value);
-            window.location.href = `index.html?date=${date}`;
+            const dateForReturn = originDate || extractDate(startDateInput.value);
+            window.location.href = `index.html?date=${dateForReturn}`;
         });
     }
 

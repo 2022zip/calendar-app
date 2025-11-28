@@ -3,6 +3,233 @@ document.addEventListener('DOMContentLoaded', function () {
     const scheduleList = document.querySelector('.schedule-list');
     const yearDisplay = document.querySelector('.date-selector .year');
     const monthDisplay = document.querySelector('.date-selector .month');
+    const excelImportBtn = document.getElementById('excel-import-btn');
+    const excelFileInput = document.getElementById('excel-file-input');
+
+    function loadXLSXLib() {
+        return new Promise((resolve, reject) => {
+            if (window.XLSX) { resolve(); return; }
+            const s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+            s.onload = () => resolve();
+            s.onerror = () => reject(new Error('XLSX load failed'));
+            document.head.appendChild(s);
+        });
+    }
+    function pickDelimiter(line) {
+        const c = (d) => (line.split(d).length - 1);
+        const candidates = [',','\t',';'];
+        let best = ','; let bestScore = -1;
+        for (const d of candidates) {
+            const score = c(d);
+            if (score > bestScore) { bestScore = score; best = d; }
+        }
+        return best;
+    }
+    function splitLine(line, delimiter) {
+        const res = []; let cur = ''; let inQ = false;
+        for (let i = 0; i < line.length; i++) {
+            const ch = line[i];
+            if (ch === '"') {
+                if (inQ && i + 1 < line.length && line[i + 1] === '"') { cur += '"'; i++; }
+                else { inQ = !inQ; }
+            } else if (ch === delimiter && !inQ) {
+                res.push(cur); cur = '';
+            } else { cur += ch; }
+        }
+        res.push(cur);
+        return res;
+    }
+    function parseDateCell(s) {
+        if (s && typeof s === 'object' && typeof s.getFullYear === 'function') {
+            const y = s.getFullYear(); const mo = s.getMonth() + 1; const d = s.getDate();
+            return { y, mo, d, iso: `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}` };
+        }
+        if (typeof s === 'number' && window.XLSX && XLSX.SSF && XLSX.SSF.parse_date_code) {
+            const o = XLSX.SSF.parse_date_code(s);
+            if (o && o.y && o.m && o.d) {
+                const y = o.y; const mo = o.m; const d = o.d;
+                return { y, mo, d, iso: `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}` };
+            }
+        }
+        const t = String(s || '').trim();
+        if (!t) return null;
+        let m = t.replace(/[．。]/g,'.').match(/(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/);
+        if (!m) return null;
+        const y = parseInt(m[1],10); const mo = parseInt(m[2],10); const d = parseInt(m[3],10);
+        return { y, mo, d, iso: `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}` };
+    }
+    function parseTimeRange(s) {
+        const t = String(s || '').trim()
+            .replace(/：/g,':')
+            .replace(/[–—－‒―~〜~至到]/g,'-')
+            .replace(/\s+/g,'');
+        let m = t.match(/^(\d{1,2}):?(\d{2})-(\d{1,2}):?(\d{2})$/);
+        if (!m) m = t.match(/(\d{1,2})[:：]?(\d{2}).*?(\d{1,2})[:：]?(\d{2})/);
+        if (!m) return null;
+        return { sh: parseInt(m[1],10), sm: parseInt(m[2],10), eh: parseInt(m[3],10), em: parseInt(m[4],10) };
+    }
+    function importScheduleText(text) {
+        const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+        if (lines.length < 2) return false;
+        const delimiter = pickDelimiter(lines[0]);
+        const header = splitLine(lines[0], delimiter).map(s => s.trim());
+        const timeCols = header.slice(1).map(parseTimeRange);
+        if (timeCols.every(v => !v)) return false;
+        let anyImported = false; let lastISO = null; const summary = {};
+        for (let i = 1; i < lines.length; i++) {
+            const cells = splitLine(lines[i], delimiter);
+            const dc = parseDateCell(cells[0]);
+            if (!dc) continue;
+            lastISO = dc.iso;
+            const y = dc.y, mo = dc.mo, d = dc.d;
+            const base = new Date(y, mo - 1, d);
+            const events = getStoredEvents();
+            let seq = 1;
+            for (let j = 1; j < cells.length && j <= timeCols.length; j++) {
+                const title = String(cells[j] || '').trim();
+                const tr = timeCols[j - 1];
+                if (!title || !tr) continue;
+                const s = new Date(base.getFullYear(), base.getMonth(), base.getDate(), tr.sh, tr.sm);
+                const t = new Date(base.getFullYear(), base.getMonth(), base.getDate(), tr.eh, tr.em);
+                const sStr = formatScheduleDate(s);
+                const tStr = formatScheduleDate(t);
+                const duplicate = events.some(e => e.date === dc.iso && e.startDate === sStr && e.endDate === tStr);
+                if (duplicate) continue;
+                const id = `event-${Date.now()}-${j}-${Math.floor(Math.random()*10000)}`;
+                events.push({ id, title, startDate: sStr, endDate: tStr, date: dc.iso });
+                summary[dc.iso] = (summary[dc.iso] || 0) + 1;
+            }
+            localStorage.setItem('events', JSON.stringify(events));
+            resolveConflictsForDate(dc.iso);
+            anyImported = true;
+        }
+        if (anyImported && lastISO) {
+            const p = lastISO.split('-');
+            currentYear = parseInt(p[0],10);
+            currentMonth = parseInt(p[1],10) - 1;
+            if (yearDisplay) yearDisplay.innerHTML = `&lt; ${currentYear}年`;
+            if (monthDisplay) monthDisplay.textContent = `${currentMonth + 1}月`;
+            generateCalendar();
+            const day = parseInt(p[2],10);
+            renderSchedule(day);
+            const selected = Array.from(daysGrid.querySelectorAll('.day')).find(d => d.textContent == day);
+            if (selected) {
+                const curSel = daysGrid.querySelector('.today');
+                if (curSel) curSel.classList.remove('today');
+                selected.classList.add('today');
+            }
+        }
+        if (Object.keys(summary).length) {
+            try { alert(Object.entries(summary).map(([d,c]) => `${d} 导入 ${c} 条`).join('\n')); } catch (_) {}
+        }
+        return anyImported;
+    }
+    function importScheduleRows(rows) {
+        if (!Array.isArray(rows) || rows.length < 2) return false;
+        const header = rows[0].map(v => String(v || '').trim());
+        const timeCols = header.slice(1).map(parseTimeRange);
+        if (timeCols.every(v => !v)) return false;
+        let anyImported = false; let lastISO = null; const summary = {};
+        for (let i = 1; i < rows.length; i++) {
+            const r = rows[i];
+            const dc = parseDateCell(r[0]);
+            if (!dc) continue;
+            lastISO = dc.iso;
+            const base = new Date(dc.y, dc.mo - 1, dc.d);
+            const events = getStoredEvents();
+            let seq = 1;
+            for (let j = 1; j < header.length; j++) {
+                const title = String((r[j] !== undefined ? r[j] : '')).trim();
+                const tr = timeCols[j - 1];
+                if (!title || !tr) continue;
+                const s = new Date(base.getFullYear(), base.getMonth(), base.getDate(), tr.sh, tr.sm);
+                const t = new Date(base.getFullYear(), base.getMonth(), base.getDate(), tr.eh, tr.em);
+                const sStr = formatScheduleDate(s);
+                const tStr = formatScheduleDate(t);
+                const duplicate = events.some(e => e.date === dc.iso && e.startDate === sStr && e.endDate === tStr);
+                if (duplicate) continue;
+                const id = `event-${Date.now()}-${j}-${Math.floor(Math.random()*10000)}`;
+                events.push({ id, title, startDate: sStr, endDate: tStr, date: dc.iso });
+                summary[dc.iso] = (summary[dc.iso] || 0) + 1;
+            }
+            localStorage.setItem('events', JSON.stringify(events));
+            resolveConflictsForDate(dc.iso);
+            anyImported = true;
+        }
+        if (anyImported && lastISO) {
+            const p = lastISO.split('-');
+            currentYear = parseInt(p[0],10);
+            currentMonth = parseInt(p[1],10) - 1;
+            if (yearDisplay) yearDisplay.innerHTML = `&lt; ${currentYear}年`;
+            if (monthDisplay) monthDisplay.textContent = `${currentMonth + 1}月`;
+            generateCalendar();
+            const day = parseInt(p[2],10);
+            renderSchedule(day);
+            const selected = Array.from(daysGrid.querySelectorAll('.day')).find(d => d.textContent == day);
+            if (selected) {
+                const curSel = daysGrid.querySelector('.today');
+                if (curSel) curSel.classList.remove('today');
+                selected.classList.add('today');
+            }
+        }
+        if (Object.keys(summary).length) {
+            try { alert(Object.entries(summary).map(([d,c]) => `${d} 导入 ${c} 条`).join('\n')); } catch (_) {}
+        }
+        return anyImported;
+    }
+    if (excelImportBtn && excelFileInput) {
+        excelImportBtn.addEventListener('click', function() { excelFileInput.click(); });
+        excelFileInput.addEventListener('change', async function(e) {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            const name = String(file.name || '').toLowerCase();
+            if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
+                try {
+                    await loadXLSXLib();
+                    const reader = new FileReader();
+                    reader.onload = function() {
+                        try {
+                            const data = new Uint8Array(reader.result);
+                            const wb = XLSX.read(data, { type: 'array' });
+                            const pickRows = () => {
+                                for (const name of wb.SheetNames) {
+                                    const sheet = wb.Sheets[name];
+                                    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: true, blankrows: false });
+                                    if (Array.isArray(rows) && rows.length) {
+                                        const headerIdx = rows.findIndex(r => r && (String(r[0] || '').includes('日期') || (Array.isArray(r) && r.slice(1).some(c => !!parseTimeRange(c)))));
+                                        if (headerIdx >= 0) {
+                                            const sliced = rows.slice(headerIdx);
+                                            const header = sliced[0] || [];
+                                            const hasTimes = header.slice(1).some(c => !!parseTimeRange(c));
+                                            if (hasTimes) return sliced;
+                                        }
+                                    }
+                                }
+                                return null;
+                            };
+                            const rows = pickRows();
+                            const ok = rows ? importScheduleRows(rows) : false;
+                            if (!ok) alert('导入失败：请确认首列为日期，后续各列表头为时间段。');
+                        } catch (err) {
+                            alert('Excel解析失败');
+                        }
+                    };
+                    reader.readAsArrayBuffer(file);
+                } catch (_) {
+                    alert('无法加载Excel解析库');
+                }
+            } else {
+                const reader = new FileReader();
+                reader.onload = function() {
+                    const ok = importScheduleText(String(reader.result || ''));
+                    if (!ok) alert('导入失败：请使用CSV或制表符文本，第一列为日期，后续列为时间段标题。');
+                };
+                reader.readAsText(file);
+            }
+            e.target.value = '';
+        });
+    }
 
     let currentYear, currentMonth;
 
@@ -1023,7 +1250,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 item.addEventListener('click', (e) => {
                     // Stop propagation to prevent the event from bubbling up to the parent
                     e.stopPropagation();
-                    window.location.href = `add_event.html?id=${event.id}`;
+                    const dateStrForLink = dateStr;
+                    window.location.href = `add_event.html?id=${event.id}&date=${dateStrForLink}`;
                 });
             }
             
@@ -1201,6 +1429,18 @@ document.addEventListener('DOMContentLoaded', function () {
         const hours = String(dateObj.getHours()).padStart(2, '0');
         const minutes = String(dateObj.getMinutes()).padStart(2, '0');
         return `${year}年${month}月${day}日 ${hours}:${minutes}`;
+    }
+    function formatScheduleDateCN(dateObj) {
+        const year = dateObj.getFullYear();
+        const month = dateObj.getMonth() + 1;
+        const day = dateObj.getDate();
+        let h24 = dateObj.getHours();
+        const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+        let period = '上午';
+        if (h24 >= 12) period = '下午';
+        let h12 = h24 % 12; if (h12 === 0) h12 = 12;
+        const hours = String(h12).padStart(2, '0');
+        return `${year}年${month}月${day}日 ${period}${hours}:${minutes}`;
     }
 
     function updateEventDataAfterDrop(draggingItem) {

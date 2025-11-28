@@ -14,9 +14,10 @@
                     <span class="year">&lt; 2024年</span>
                 </div>
                 <div class="header-actions">
+                <button id="excel-import-btn" class="excel-import-btn">EXCEL汇入日程</button>
                 <span class="icon">🔍</span>
                 <a href="add_event.html" id="add-event-btn" class="icon">➕</a>
-            </div>
+                </div>
             </div>
             <div class="month-view">
                 <span class="month">7月</span>
@@ -46,6 +47,8 @@
         </main>
 
     </div>
+
+    <input type="file" id="excel-file-input" accept=".xlsx,.xls,.csv" style="display:none">
 
     <script src="script.js"></script>
 </body>
