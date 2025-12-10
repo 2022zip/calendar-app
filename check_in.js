@@ -259,11 +259,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const parsed = dayEvents.map(e => ({ id: e.id, dt: parseStartForEvent(e, baseDate) }))
                                .filter(p => p.dt instanceof Date && !isNaN(p.dt));
         parsed.sort((a, b) => a.dt - b.dt);
-        if (currentId) {
-            const idx = parsed.findIndex(p => p.id === currentId);
-            if (idx >= 0 && idx + 1 < parsed.length) return parsed[idx + 1].id;
-        }
-        return parsed.length > 0 ? parsed[0].id : null;
+        const idx = currentId ? parsed.findIndex(p => p.id === currentId) : -1;
+        if (idx === -1) return currentId || null; // 当前不在列表中，保持自身或返回null
+        if (idx + 1 < parsed.length) return parsed[idx + 1].id; // 有下一项，返回下一项
+        return currentId; // 已是最后一项，返回自身
+    }
+
+    function findStrictNextEventId(baseDate, currentId) {
+        const events = JSON.parse(localStorage.getItem('events')) || [];
+        const dayEvents = events.filter(e => e.date === baseDate);
+        const parsed = dayEvents.map(e => ({ id: e.id, dt: parseStartForEvent(e, baseDate) }))
+                               .filter(p => p.dt instanceof Date && !isNaN(p.dt));
+        parsed.sort((a, b) => a.dt - b.dt);
+        const idx = currentId ? parsed.findIndex(p => p.id === currentId) : -1;
+        if (idx === -1) return currentId || null;
+        const next = parsed[idx + 1];
+        return next ? next.id : currentId;
     }
 
     function findUrgentNextEventId(baseDate, currentId, windowMinutes) {
@@ -278,6 +289,12 @@ document.addEventListener('DOMContentLoaded', () => {
             .filter(p => p.dt && p.dt >= ref && p.dt <= cutoff);
         candidates.sort((a, b) => a.dt - b.dt);
         return candidates.length > 0 ? candidates[0].id : null;
+    }
+
+    function findEventIdByTitleAndDate(title, date) {
+        const events = JSON.parse(localStorage.getItem('events')) || [];
+        const found = events.find(e => e.date === date && e.title === title);
+        return found ? found.id : null;
     }
 
     if (actionBtn) {
@@ -311,9 +328,10 @@ document.addEventListener('DOMContentLoaded', () => {
             actionBtn.textContent = '下一个任务';
             actionBtn.addEventListener('click', (e) => {
                 e.preventDefault();
-                const urgentId = findUrgentNextEventId(safeDate, eventId, 30);
-                if (urgentId) {
-                    window.location.href = `add_event.html?id=${urgentId}&date=${safeDate}`;
+                const baseId = eventId || findEventIdByTitleAndDate(safeTitle, safeDate);
+                const targetId = findStrictNextEventId(safeDate, baseId);
+                if (targetId) {
+                    window.location.href = `add_event.html?id=${targetId}&date=${safeDate}`;
                 }
             });
         }
