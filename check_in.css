@@ -37,6 +37,16 @@ header h1 { font-size: 20px; margin: 0; }
 
 #event-info { flex: 1; text-align: center; }
 
+.save-task-btn {
+    background-color: #00bfff;
+    color: #fff;
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 14px;
+    font-weight: bold;
+    text-decoration: none;
+}
+
 main {
     padding: 16px;
 }

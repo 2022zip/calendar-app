@@ -903,7 +903,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         } else {
             currentYear = 2025;
-            currentMonth = 6; // July
+            currentMonth = 11; // December
             initialDay = 2;
         }
 
@@ -1243,6 +1243,107 @@ document.addEventListener('DOMContentLoaded', function () {
             item.className = 'schedule-item';
             item.setAttribute('draggable', 'true');
             item.dataset.eventId = event.id;
+
+            if (event.type === 'check-in-record') {
+                item.classList.add('check-in-record');
+                
+                item.addEventListener('click', (e) => {
+                     e.stopPropagation();
+                     window.location.href = `add_event.html?id=${event.id}&date=${dateStr}`;
+                });
+
+                const colorBar = document.createElement('div');
+                colorBar.className = 'color-bar';
+                colorBar.style.backgroundColor = event.color || '#4A90E2';
+                
+                const itemContent = document.createElement('div');
+                itemContent.className = 'item-content check-in-content';
+                const itemTitle = document.createElement('div');
+                itemTitle.className = 'item-title';
+                (function(){
+                    const isDefaultTitle = (t) => !t || t === '外勤打卡' || /^\d{1,2}:\d{2}任务$/.test(t) || t === '任务';
+                    let displayTitle = null;
+                    if (event.title && !isDefaultTitle(event.title)) {
+                        displayTitle = event.title;
+                    }
+                    if (!displayTitle) {
+                        let hm = null;
+                        const sD = parseScheduleDate(event.startDate);
+                        if (sD) hm = `${String(sD.getHours()).padStart(2,'0')}:${String(sD.getMinutes()).padStart(2,'0')}`;
+                        else if (event.checkInTime) hm = String(event.checkInTime);
+                        displayTitle = hm ? `${hm}任务` : (event.title || '任务');
+                    }
+                    itemTitle.textContent = displayTitle;
+                })();
+                itemContent.appendChild(itemTitle);
+                
+                const btnContainer = document.createElement('div');
+                btnContainer.className = 'check-in-buttons';
+                
+                const arriveBtn = document.createElement('div');
+                arriveBtn.className = `check-in-capsule arrive ${event.hasCheckIn ? 'active' : ''}`;
+                arriveBtn.textContent = '到场打卡';
+                arriveBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    window.location.href = `check_in.html?eventId=${event.id}&date=${dateStr}&type=check-in&source=schedule`;
+                });
+                
+                const leaveBtn = document.createElement('div');
+                leaveBtn.className = `check-in-capsule leave ${event.hasCheckOut ? 'active' : ''}`;
+                leaveBtn.textContent = '离场打卡';
+                leaveBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    window.location.href = `check_in.html?eventId=${event.id}&date=${dateStr}&type=check-out&source=schedule`;
+                });
+                
+                btnContainer.appendChild(arriveBtn);
+                btnContainer.appendChild(leaveBtn);
+                itemContent.appendChild(btnContainer);
+                
+            const itemTime = document.createElement('div');
+            itemTime.className = 'item-time';
+
+            let sDate = parseScheduleDate(event.startDate);
+            if (!sDate) {
+                const hm = String(event.checkInTime || '').split(':');
+                const yy = Number(dateStr.split('-')[0]);
+                const mm = Number(dateStr.split('-')[1]);
+                const dd = Number(dateStr.split('-')[2]);
+                const startObj = new Date(yy, mm - 1, dd, Number(hm[0] || 0), Number(hm[1] || 0));
+                const endObj = new Date(startObj.getTime() + 60 * 60 * 1000);
+                event.startDate = formatScheduleDate(startObj);
+                event.endDate = formatScheduleDate(endObj);
+                sDate = startObj;
+                const allEventsFixed = getStoredEvents();
+                const idxFix = allEventsFixed.findIndex(e => e.id === event.id);
+                if (idxFix > -1) {
+                    allEventsFixed[idxFix] = event;
+                    localStorage.setItem('events', JSON.stringify(allEventsFixed));
+                }
+            }
+            if (sDate) {
+                const st = document.createElement('div');
+                st.textContent = `${String(sDate.getHours()).padStart(2, '0')}:${String(sDate.getMinutes()).padStart(2, '0')}`;
+                itemTime.appendChild(st);
+            }
+            let eDate = parseScheduleDate(event.endDate);
+            if (!eDate && sDate) {
+                eDate = new Date(sDate.getTime() + 60 * 60 * 1000);
+            }
+            if (eDate) {
+                const et = document.createElement('div');
+                et.className = 'end-time';
+                et.textContent = `${String(eDate.getHours()).padStart(2, '0')}:${String(eDate.getMinutes()).padStart(2, '0')}`;
+                itemTime.appendChild(et);
+            }
+
+                item.appendChild(colorBar);
+                item.appendChild(itemContent);
+                item.appendChild(itemTime);
+                scheduleList.appendChild(item);
+                return;
+            }
+
             if (event.needsManual) { item.classList.add('conflict'); }
 
             if (event.id) {

@@ -199,12 +199,34 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const departButtonPage = document.getElementById('depart-button-page');
-    if (departButtonPage) {
-        departButtonPage.addEventListener('click', (e) => {
-            e.preventDefault(); // Prevent form submission
+    const ctripBtn = document.getElementById('action-ctrip');
+    const didiBtn = document.getElementById('action-didi');
+    const privateBtn = document.getElementById('action-private');
+
+    function goto(url) {
+        const date = extractDate(startDateInput.value);
+        const idPart = eventId ? `id=${eventId}&` : '';
+        window.location.href = `${url}?${idPart}date=${date}`;
+    }
+
+    if (ctripBtn) {
+        ctripBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            goto('ctrip_trip.html');
+        });
+    }
+    if (didiBtn) {
+        didiBtn.addEventListener('click', (e) => {
+            e.preventDefault();
             const date = extractDate(startDateInput.value);
-            window.location.href = `depart_options.html?date=${date}`;
+            const idPart = eventId ? `id=${eventId}&` : '';
+            window.location.href = `map_view.html?${idPart}date=${date}&mode=didi`;
+        });
+    }
+    if (privateBtn) {
+        privateBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            goto('private_car_trip.html');
         });
     }
 

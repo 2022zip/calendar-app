@@ -142,18 +142,23 @@ main {
     width: 100%;
 }
 
-.depart-button-page {
-    background-color: #7ed321;
-    color: white;
+.depart-actions {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 24px 16px 36px;
+}
+
+.round-option-btn {
+    background-color: #007aff;
+    color: #fff;
     border-radius: 50%;
     width: 80px;
     height: 80px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
+    font-size: 14px;
     font-weight: bold;
-    border: none;
-    cursor: pointer;
-    margin: 20px auto;
+    text-decoration: none;
 }
