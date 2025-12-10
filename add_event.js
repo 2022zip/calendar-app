@@ -253,9 +253,7 @@ document.addEventListener('DOMContentLoaded', function () {
             e.preventDefault();
             const saved = saveEventSilently();
             const idToUse = saved.id || eventId;
-            const date = extractDate(startDateInput.value);
-            const idPart = idToUse ? `id=${idToUse}&` : '';
-            window.location.href = `map_view.html?${idPart}date=${date}&mode=didi`;
+            goto('didi_trip.html', idToUse);
         });
     }
     if (privateBtn) {
