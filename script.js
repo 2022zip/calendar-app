@@ -5,7 +5,17 @@ document.addEventListener('DOMContentLoaded', function () {
     const monthDisplay = document.querySelector('.date-selector .month');
     const excelImportBtn = document.getElementById('excel-import-btn');
     const excelFileInput = document.getElementById('excel-file-input');
-
+// --- 一次性清空旧测试行程（避免旧测试档复活） ---
+    if (!localStorage.getItem('events_cleared_v1')) {
+        try {
+            localStorage.removeItem('events');
+            localStorage.removeItem('migration_done_v6'); // 旧标记一并清掉
+            localStorage.setItem('events_cleared_v1', 'true');
+        } catch (e) {
+            console.warn('无法清空本地 events：', e);
+        }
+    }
+    
     function loadXLSXLib() {
         return new Promise((resolve, reject) => {
             if (window.XLSX) { resolve(); return; }
@@ -17,12 +27,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
     function pickDelimiter(line) {
-        const c = (d) => (line.split(d).length - 1);
-        const candidates = [',','\t',';'];
-        let best = ','; let bestScore = -1;
+        const candidates = [',','\t',';','，','|'];
+        let best = ','; let bestTimes = -1;
         for (const d of candidates) {
-            const score = c(d);
-            if (score > bestScore) { bestScore = score; best = d; }
+            const cells = splitLine(line, d).map(s => String(s || '').trim());
+            const times = cells.slice(1).map(parseTimeRange).filter(Boolean).length;
+            if (times > bestTimes) { bestTimes = times; best = d; }
         }
         return best;
     }
@@ -52,7 +62,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 return { y, mo, d, iso: `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}` };
             }
         }
-        const t = String(s || '').trim();
+        let t = String(s || '');
+        t = t.replace(/^\ufeff/, '');
+        t = t.replace(/ハ/g, '_');
+        t = t.trim();
         if (!t) return null;
         let m = t.replace(/[．。]/g,'.').match(/(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/);
         if (!m) return null;
@@ -60,32 +73,57 @@ document.addEventListener('DOMContentLoaded', function () {
         return { y, mo, d, iso: `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}` };
     }
     function parseTimeRange(s) {
-        const t = String(s || '').trim()
-            .replace(/：/g,':')
-            .replace(/[–—－‒―~〜~至到]/g,'-')
-            .replace(/\s+/g,'');
+        let t = String(s || '').trim();
+        t = t.replace(/^\ufeff/, '');
+        t = t.replace(/：/g, ':')
+             .replace(/[–—－‒―~〜~至到]/g, '-')
+             .replace(/\s+/g, '');
+        t = t.replace(/([0-9]{1,2})[点时]([0-9]{1,2})/g, '$1:$2')
+             .replace(/([0-9]{1,2})[点时](?=[^\d]|$)/g, '$1:00');
         let m = t.match(/^(\d{1,2}):?(\d{2})-(\d{1,2}):?(\d{2})$/);
-        if (!m) m = t.match(/(\d{1,2})[:：]?(\d{2}).*?(\d{1,2})[:：]?(\d{2})/);
+        if (!m) m = t.match(/^(\d{1,2})(\d{2})-(\d{1,2})(\d{2})$/);
+        if (!m) {
+            const m2 = t.match(/^(\d{1,2})(?::?(\d{2}))?-(\d{1,2})(?::?(\d{2}))?$/);
+            if (m2) {
+                return {
+                    sh: parseInt(m2[1],10),
+                    sm: parseInt(m2[2] || '00',10),
+                    eh: parseInt(m2[3],10),
+                    em: parseInt(m2[4] || '00',10)
+                };
+            }
+        }
         if (!m) return null;
         return { sh: parseInt(m[1],10), sm: parseInt(m[2],10), eh: parseInt(m[3],10), em: parseInt(m[4],10) };
     }
+    var currentYear, currentMonth;
     function importScheduleText(text) {
-        const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+        const lines = text.split(/\r\n|\n|\r/).filter(l => String(l || '').replace(/^\ufeff/, '').trim().length > 0);
         if (lines.length < 2) return false;
-        const delimiter = pickDelimiter(lines[0]);
-        const header = splitLine(lines[0], delimiter).map(s => s.trim());
-        const timeCols = header.slice(1).map(parseTimeRange);
+        let headerIdx = 0;
+        let delimiter = pickDelimiter(lines[0]);
+        let header = splitLine(lines[0], delimiter).map(s => String(s || '').replace(/^\ufeff/, '').trim());
+        let timeCols = header.slice(1).map(parseTimeRange);
+        if (timeCols.every(v => !v)) {
+            for (let i = 0; i < Math.min(lines.length, 50); i++) {
+                const tryDelim = pickDelimiter(lines[i]);
+                const tryHeader = splitLine(lines[i], tryDelim).map(s => String(s || '').replace(/^\ufeff/, '').trim());
+                const tryTimes = tryHeader.slice(1).map(parseTimeRange);
+                const ok = tryTimes.some(Boolean);
+                if (ok) { headerIdx = i; delimiter = tryDelim; header = tryHeader; timeCols = tryTimes; break; }
+            }
+        }
         if (timeCols.every(v => !v)) return false;
-        let anyImported = false; let lastISO = null; const summary = {};
-        for (let i = 1; i < lines.length; i++) {
+        let anyImported = false; let lastISO = null; const summary = {}; const changedDates = new Set();
+        let events = getStoredEvents();
+        const existing = new Set(events.map(e => `${e.date}|${e.startDate}|${e.endDate}|${String(e.title || '').trim()}`));
+        for (let i = headerIdx + 1; i < lines.length; i++) {
             const cells = splitLine(lines[i], delimiter);
             const dc = parseDateCell(cells[0]);
             if (!dc) continue;
             lastISO = dc.iso;
             const y = dc.y, mo = dc.mo, d = dc.d;
             const base = new Date(y, mo - 1, d);
-            const events = getStoredEvents();
-            let seq = 1;
             for (let j = 1; j < cells.length && j <= timeCols.length; j++) {
                 const title = String(cells[j] || '').trim();
                 const tr = timeCols[j - 1];
@@ -94,15 +132,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 const t = new Date(base.getFullYear(), base.getMonth(), base.getDate(), tr.eh, tr.em);
                 const sStr = formatScheduleDate(s);
                 const tStr = formatScheduleDate(t);
-                const duplicate = events.some(e => e.date === dc.iso && e.startDate === sStr && e.endDate === tStr);
-                if (duplicate) continue;
+                const key = `${dc.iso}|${sStr}|${tStr}|${title}`;
+                if (existing.has(key)) continue;
                 const id = `event-${Date.now()}-${j}-${Math.floor(Math.random()*10000)}`;
                 events.push({ id, title, startDate: sStr, endDate: tStr, date: dc.iso });
+                existing.add(key);
                 summary[dc.iso] = (summary[dc.iso] || 0) + 1;
+                changedDates.add(dc.iso);
+                anyImported = true;
             }
+        }
+        if (anyImported) {
             localStorage.setItem('events', JSON.stringify(events));
-            resolveConflictsForDate(dc.iso);
-            anyImported = true;
+            changedDates.forEach(d => resolveConflictsForDate(d));
         }
         if (anyImported && lastISO) {
             const p = lastISO.split('-');
@@ -122,23 +164,25 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (Object.keys(summary).length) {
             try { alert(Object.entries(summary).map(([d,c]) => `${d} 导入 ${c} 条`).join('\n')); } catch (_) {}
+        } else {
+            try { alert('本文件没有新增条目（可能全部已存在），未做任何更改'); } catch (_) {}
         }
-        return anyImported;
+        return true;
     }
     function importScheduleRows(rows) {
         if (!Array.isArray(rows) || rows.length < 2) return false;
         const header = rows[0].map(v => String(v || '').trim());
         const timeCols = header.slice(1).map(parseTimeRange);
         if (timeCols.every(v => !v)) return false;
-        let anyImported = false; let lastISO = null; const summary = {};
+        let anyImported = false; let lastISO = null; const summary = {}; const changedDates = new Set();
+        let events = getStoredEvents();
+        const existing = new Set(events.map(e => `${e.date}|${e.startDate}|${e.endDate}|${String(e.title || '').trim()}`));
         for (let i = 1; i < rows.length; i++) {
             const r = rows[i];
             const dc = parseDateCell(r[0]);
             if (!dc) continue;
             lastISO = dc.iso;
             const base = new Date(dc.y, dc.mo - 1, dc.d);
-            const events = getStoredEvents();
-            let seq = 1;
             for (let j = 1; j < header.length; j++) {
                 const title = String((r[j] !== undefined ? r[j] : '')).trim();
                 const tr = timeCols[j - 1];
@@ -147,15 +191,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 const t = new Date(base.getFullYear(), base.getMonth(), base.getDate(), tr.eh, tr.em);
                 const sStr = formatScheduleDate(s);
                 const tStr = formatScheduleDate(t);
-                const duplicate = events.some(e => e.date === dc.iso && e.startDate === sStr && e.endDate === tStr);
-                if (duplicate) continue;
+                const key = `${dc.iso}|${sStr}|${tStr}|${title}`;
+                if (existing.has(key)) continue;
                 const id = `event-${Date.now()}-${j}-${Math.floor(Math.random()*10000)}`;
                 events.push({ id, title, startDate: sStr, endDate: tStr, date: dc.iso });
+                existing.add(key);
                 summary[dc.iso] = (summary[dc.iso] || 0) + 1;
+                changedDates.add(dc.iso);
+                anyImported = true;
             }
+        }
+        if (anyImported) {
             localStorage.setItem('events', JSON.stringify(events));
-            resolveConflictsForDate(dc.iso);
-            anyImported = true;
+            changedDates.forEach(d => resolveConflictsForDate(d));
         }
         if (anyImported && lastISO) {
             const p = lastISO.split('-');
@@ -175,8 +223,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (Object.keys(summary).length) {
             try { alert(Object.entries(summary).map(([d,c]) => `${d} 导入 ${c} 条`).join('\n')); } catch (_) {}
+        } else {
+            try { alert('本文件没有新增条目（可能全部已存在），未做任何更改'); } catch (_) {}
         }
-        return anyImported;
+        return true;
     }
     if (excelImportBtn && excelFileInput) {
         excelImportBtn.addEventListener('click', function() { excelFileInput.click(); });
@@ -222,642 +272,48 @@ document.addEventListener('DOMContentLoaded', function () {
             } else {
                 const reader = new FileReader();
                 reader.onload = function() {
-                    const ok = importScheduleText(String(reader.result || ''));
-                    if (!ok) alert('导入失败：请使用CSV或制表符文本，第一列为日期，后续列为时间段标题。');
+                    try {
+                        const buf = reader.result;
+                        const u8 = new Uint8Array(buf);
+                        const tryEnc = (enc) => {
+                            try { return importScheduleText(new TextDecoder(enc).decode(u8)); } catch (_) { return false; }
+                        };
+                        const ok = tryEnc('utf-8') || tryEnc('utf-16le') || tryEnc('utf-16be') || tryEnc('macintosh') || tryEnc('windows-1252');
+                        if (!ok) alert('导入失败：请确认首列为日期，后续列表头为时间段，且文件编码为 UTF-8/UTF-16。');
+                    } catch (_) {
+                        alert('文本解析失败');
+                    }
                 };
-                reader.readAsText(file);
+                reader.readAsArrayBuffer(file);
             }
             e.target.value = '';
         });
     }
 
-    let currentYear, currentMonth;
+    (function(){
+        const p = new URLSearchParams(window.location.search);
+        const t = p.get('testImport');
+        const cs = p.get('clearStorage') || p.get('resetStorage') || p.get('clear');
+        if (cs === '1' || cs === 'true') {
+            try {
+                const keys = Object.keys(localStorage);
+                for (let i = 0; i < keys.length; i++) localStorage.removeItem(keys[i]);
+                alert('已清空预览暂存');
+            } catch (_) {}
+        }
+        if (t === 'csv') {
+            const sample = [
+                '日期,08:30-10:00,10:00-10:30,10:30-11:00,11:00-12:00,12:00-13:00,13:00-13:30,13:30-14:00',
+                '2025/7/21,杭州凌神自成设备有限公司等需求沟通（线上）,达到自动化会议整理与系统点整理,前往杭州兴帆包装材料有限公司途中客户案要点复盘,杭州兴帆包装材料有限公司仓储与生产协同现况访谈,与兴帆包装负责人午餐沟通（确认试点产线与指标）,兴帆包装会议纪要与关键行动项记录,杭州华伉实业有限公司业务结构与产品线快速梳理',
+                '2025/7/22,杭州旭业实业有限公司经营现况与数字化盘点沟通,旭业实业内流程瓶颈与系统切入点整理,前往杭州兴帆包装材料有限公司途中客户方案要点复盘,杭州兴帆包装材料有限公司仓储与生产协同现况访谈,与兴帆包装负责人午餐沟通（确认试点产线与指标）,兴帆包装会议纪要与关键行动项记录,杭州华伉实业有限公司业务结构与产品线快速梳理'
+            ].join('\n');
+            importScheduleText(sample);
+        }
+    })();
 
-    if (!localStorage.getItem('migration_done_v6') || !(JSON.parse(localStorage.getItem('events')) || []).length) {
-        const hardcodedEvents = [
-            {
-                id: 'event-1',
-                title: '宁波大央科技有限公司',
-                startDate: '2025年7月9日 上午10:30',
-                endDate: '2025年7月9日 上午10:40',
-                date: '2025-07-09',
-                notes: '宁波大央科技有限公司案情速览',
-                customerLevel: '宁波大央科技成立于2010年，专注光电子灭蚊与植物源驱蚊，拥有数百项病媒防控专利，是行业标准牵头单位之一。 公开招聘信息显示：公司建筑面积约5.5万㎡，年产值约5亿元人民币、年出口约千万美元，员工规模约600人，在有些口径下被归入“1000–5000人”档的高成长科技型中小企业/隐形冠军培育企业。 → 归类：细分赛道中型偏大型制造+电商企业，有研发、有品牌、有出口，有一定IT/管理投入能力。',
-                hiddenNeeds: '1.1.多品牌多渠道一体化管理：旗下“大央、俏蜻蜓、Cokit、Kinven”等多品牌，既做欧美ODM/OEM，又做国内电商与连锁药房/KA，典型“多品牌+多渠道+多地区”经营，容易出现订单、库存、价格、促销、铺货数据分散的问题，需要更强的全渠道经营与库存可视化。\n\n 2. 研发与知识产权资产化管理：手握数百项专利、主导行业标准，核心优势在技术与配方，但专利、标准、实验数据分散在不同系统与文档中，存在研发项目进度、成果沉淀、专利与配方的全生命周期管理需求。\n\n 3. 制造与品质精益化：有多条物理蚊虫防控生产线和在建新厂区，产品又要满足欧美与国内多重认证，对MES/质检追溯、批次管理、设备效率与良率分析的精细化要求会逐步抬高。\n\n 4. 合规与标准化运营：公司牵头起草户外UV LED灭蚊灯行业标准，并通过BSCI、ISO与知识产权管理规范等认证，对外要对接政府招标、商超/药房连锁与海外客户，对内需要标准化流程与合规风险管控（认证、检测报告、供应链准入等）。',
-                caseJudgment: '• 客户定位：这是一个在细分驱蚊/光电灭蚊赛道里具有话语权的“技术型制造+电商出口”企业，属于有成长性、有技术壁垒、对品牌与合规都很在意的客户。 • 机会属性：不是单点小工具客户，更适合作为“研发+制造+电商一体化数智化/信息化项目”，可以从某一强痛点切入（如：生产质检追溯、电商订单与库存一体化、研发/专利管理），再逐步扩展。 • 决策风格：既与科研院所、疾控中心长期合作，又频繁参与行业标准和政府项目，说明管理层对“长期投入+行业地位”有认知，对有行业案例、有方法论的解决方案型供应商更友好，但也会看重落地效果与性价比。',
-                summary: '宁波大央科技是一家在“灭蚊/驱蚊”细分赛道里具技术和标准话语权的中大型制造+电商企业，现金流与成长性都不错，适合作为从“研发–制造–电商–合规”一体化数智化项目切入的标杆型客户。'
-            },
-            {
-                id: 'event-2',
-                title: '惠康客诉线上会议',
-                startDate: '2025年7月13日 上午9:00',
-                endDate: '2025年7月13日 上午10:00',
-                date: '2025-07-13'
-            },
-            {
-                id: 'event-3',
-                title: '惠康客诉线上会议',
-                startDate: '2025年7月9日 上午9:00',
-                endDate: '2025年7月9日 上午10:00',
-                date: '2025-07-09',
-                location: '线上'
-            },
-            {
-                id: 'event-4',
-                title: '惠康客诉会后记录与方案确认',
-                startDate: '2025年7月9日 上午10:00',
-                endDate: '2025年7月9日 上午10:30',
-                date: '2025-07-09'
-            },
-            {
-                id: 'event-5',
-                title: '前往江丰科技途中要点整理',
-                startDate: '2025年7月9日 上午10:30',
-                endDate: '2025年7月9日 上午11:10',
-                date: '2025-07-09'
-            },
-            {
-                id: 'event-6',
-                title: '江丰科技现场沟通',
-                startDate: '2025年7月9日 上午11:10',
-                endDate: '2025年7月9日 下午12:00',
-                date: '2025-07-09',
-                location: '江丰科技现场'
-            },
-            {
-                id: 'event-7',
-                title: '与王总午餐沟通',
-                startDate: '2025年7月9日 下午12:00',
-                endDate: '2025年7月9日 下午1:00',
-                date: '2025-07-09'
-            },
-            {
-                id: 'event-8',
-                title: '返回途中信息整理与致谢讯息',
-                startDate: '2025年7月9日 下午1:00',
-                endDate: '2025年7月9日 下午1:30',
-                date: '2025-07-09'
-            },
-            {
-                id: 'event-9',
-                title: '大发光纤合同条款与底线对表',
-                startDate: '2025年7月9日 下午1:30',
-                endDate: '2025年7月9日 下午2:00',
-                date: '2025-07-09'
-            },
-            {
-                id: 'event-10',
-                title: '大发光纤合同洽谈',
-                startDate: '2025年7月9日 下午2:00',
-                endDate: '2025年7月9日 下午3:00',
-                date: '2025-07-09'
-            },
-            {
-                id: 'event-11',
-                title: '大发光纤合同结果确认与后续动作安排',
-                startDate: '2025年7月9日 下午3:00',
-                endDate: '2025年7月9日 下午4:00',
-                date: '2025-07-09'
-            },
-            {
-                id: 'event-12',
-                title: '今日主要客户机会与风险盘点',
-                startDate: '2025年7月9日 下午4:00',
-                endDate: '2025年7月9日 下午5:00',
-                date: '2025-07-09'
-            },
-            {
-                id: 'event-13',
-                title: '同行业潜在客户轻触达与约访',
-                startDate: '2025年7月9日 下午5:00',
-                endDate: '2025年7月9日 下午6:00',
-                date: '2025-07-09'
-            },
-            {
-                id: 'event-14',
-                title: '晚餐与机动沟通（奥克斯电器）',
-                startDate: '2025年7月9日 下午6:00',
-                endDate: '2025年7月9日 下午7:00',
-                date: '2025-07-09'
-            },
-            {
-                id: 'event-15',
-                title: '填写日报',
-                startDate: '2025年7月9日 下午7:00',
-                endDate: '2025年7月9日 下午8:00',
-                date: '2025-07-09'
-            },
-            {
-                id: 'event-16',
-                title: '日终复盘与明日三件事规划',
-                startDate: '2025年7月9日 下午8:00',
-                endDate: '2025年7月9日 下午9:00',
-                date: '2025-07-09'
-            },
-            {
-                id: 'event-17',
-                title: '惠康客诉线上会议',
-                startDate: '2025年7月8日 上午9:00',
-                endDate: '2025年7月8日 上午10:00',
-                date: '2025-07-08'
-            },
-            {
-                id: 'event-18',
-                title: '惠康客诉会后记录与方案确认',
-                startDate: '2025年7月8日 上午10:00',
-                endDate: '2025年7月8日 上午10:30',
-                date: '2025-07-08'
-            },
-            {
-                id: 'event-19',
-                title: '前往江丰科技途中要点整理',
-                startDate: '2025年7月8日 上午10:30',
-                endDate: '2025年7月8日 上午11:10',
-                date: '2025-07-08'
-            },
-            {
-                id: 'event-20',
-                title: '江丰科技现场沟通',
-                startDate: '2025年7月8日 上午11:10',
-                endDate: '2025年7月8日 下午12:00',
-                date: '2025-07-08'
-            },
-            {
-                id: 'event-21',
-                title: '与王总午餐沟通',
-                startDate: '2025年7月8日 下午12:00',
-                endDate: '2025年7月8日 下午1:00',
-                date: '2025-07-08'
-            },
-            {
-                id: 'event-22',
-                title: '返回途中信息整理与致谢讯息',
-                startDate: '2025年7月8日 下午1:00',
-                endDate: '2025年7月8日 下午1:30',
-                date: '2025-07-08'
-            },
-            {
-                id: 'event-23',
-                title: '大发光纤合同条款与底线对表',
-                startDate: '2025年7月8日 下午1:30',
-                endDate: '2025年7月8日 下午2:00',
-                date: '2025-07-08'
-            },
-            {
-                id: 'event-24',
-                title: '大发光纤合同洽谈',
-                startDate: '2025年7月8日 下午2:00',
-                endDate: '2025年7月8日 下午3:00',
-                date: '2025-07-08'
-            },
-            {
-                id: 'event-25',
-                title: '大发光纤合同结果确认与后续动作安排',
-                startDate: '2025年7月8日 下午3:00',
-                endDate: '2025年7月8日 下午4:00',
-                date: '2025-07-08'
-            },
-            {
-                id: 'event-26',
-                title: '今日主要客户机会与风险盘点',
-                startDate: '2025年7月8日 下午4:00',
-                endDate: '2025年7月8日 下午5:00',
-                date: '2025-07-08'
-            },
-            {
-                id: 'event-27',
-                title: '同行业潜在客户轻触达与约访',
-                startDate: '2025年7月8日 下午5:00',
-                endDate: '2025年7月8日 下午6:00',
-                date: '2025-07-08'
-            },
-            {
-                id: 'event-28',
-                title: '晚餐与机动沟通（奥克斯电器）',
-                startDate: '2025年7月8日 下午6:00',
-                endDate: '2025年7月8日 下午7:00',
-                date: '2025-07-08'
-            },
-            {
-                id: 'event-29',
-                title: '填写日报',
-                startDate: '2025年7月8日 下午7:00',
-                endDate: '2025年7月8日 下午8:00',
-                date: '2025-07-08'
-            },
-            {
-                id: 'event-30',
-                title: '日终复盘与明日三件事规划',
-                startDate: '2025年7月8日 下午8:00',
-                endDate: '2025年7月8日 下午9:00',
-                date: '2025-07-08'
-            },
-            {
-                id: 'event-31',
-                title: '杭州凌坤自动化设备有限公司年度需求访谈（线上）',
-                startDate: '2025年7月9日 上午9:00',
-                endDate: '2025年7月9日 上午10:00',
-                date: '2025-07-09'
-            },
-            {
-                id: 'event-32',
-                title: '凌坤自动化会议纪要与系统机会整理',
-                startDate: '2025年7月9日 上午10:00',
-                endDate: '2025年7月9日 上午10:30',
-                date: '2025-07-09'
-            },
-            {
-                id: 'event-33',
-                title: '前往杭州荣松包装制品有限公司途中要点整理',
-                startDate: '2025年7月9日 上午10:30',
-                endDate: '2025年7月9日 上午11:10',
-                date: '2025-07-09'
-            },
-            {
-                id: 'event-34',
-                title: '杭州荣松包装制品有限公司现场产线走访与痛点盘点',
-                startDate: '2025年7月9日 上午11:10',
-                endDate: '2025年7月9日 下午12:00',
-                date: '2025-07-09'
-            },
-            {
-                id: 'event-35',
-                title: '与荣松包装生产负责人午餐沟通（确认导入节奏）',
-                startDate: '2025年7月9日 下午12:00',
-                endDate: '2025年7月9日 下午1:00',
-                date: '2025-07-09'
-            },
-            {
-                id: 'event-36',
-                title: '返回途中信息整理与致谢讯息',
-                startDate: '2025年7月9日 下午1:00',
-                endDate: '2025年7月9日 下午1:30',
-                date: '2025-07-09'
-            },
-            {
-                id: 'event-37',
-                title: '杭州宏羽服饰有限公司现况与历史项目资料快速梳理',
-                startDate: '2025年7月9日 下午1:30',
-                endDate: '2025年7月9日 下午2:00',
-                date: '2025-07-09'
-            },
-            {
-                id: 'event-38',
-                title: '杭州宏羽服饰有限公司生产排程与门店补货方案初谈',
-                startDate: '2025年7月9日 下午2:00',
-                endDate: '2025年7月9日 下午3:00',
-                date: '2025-07-09'
-            },
-            {
-                id: 'event-39',
-                title: '宏羽服饰合作条款与报价测算对表',
-                startDate: '2025年7月9日 下午3:00',
-                endDate: '2025年7月9日 下午4:00',
-                date: '2025-07-09'
-            },
-            {
-                id: 'event-40',
-                title: '今日三家客户机会与风险盘点（凌坤/荣松/宏羽）',
-                startDate: '2025年7月9日 下午4:00',
-                endDate: '2025年7月9日 下午5:00',
-                date: '2025-07-09'
-            },
-            {
-                id: 'event-41',
-                title: '同园区制造业潜在客户轻触达与约访',
-                startDate: '2025年7月9日 下午5:00',
-                endDate: '2025年7月9日 下午6:00',
-                date: '2025-07-09'
-            },
-            {
-                id: 'event-42',
-                title: '晚餐与机动沟通（视客户加场而定）',
-                startDate: '2025年7月9日 下午6:00',
-                endDate: '2025年7月9日 下午7:00',
-                date: '2025-07-09'
-            },
-            {
-                id: 'event-43',
-                title: '填写日报与CRM更新',
-                startDate: '2025年7月9日 下午7:00',
-                endDate: '2025年7月9日 下午8:00',
-                date: '2025-07-09'
-            },
-            {
-                id: 'event-44',
-                title: '日终复盘与明日三件事规划',
-                startDate: '2025年7月9日 下午8:00',
-                endDate: '2025年7月9日 下午9:00',
-                date: '2025-07-09'
-            },
-            {
-                id: 'event-45',
-                title: '润展（杭州）新材料有限公司年度订单与产能规划沟通',
-                startDate: '2025年7月7日 上午9:00',
-                endDate: '2025年7月7日 上午10:00',
-                date: '2025-07-07'
-            },
-            {
-                id: 'event-46',
-                title: '润展新材料需求优先级与系统蓝图粗排',
-                startDate: '2025年7月7日 上午10:00',
-                endDate: '2025年7月7日 上午10:30',
-                date: '2025-07-07'
-            },
-            {
-                id: 'event-47',
-                title: '前往杭州安泰工艺品有限公司途中整理访谈要点',
-                startDate: '2025年7月7日 上午10:30',
-                endDate: '2025年7月7日 上午11:10',
-                date: '2025-07-07'
-            },
-            {
-                id: 'event-48',
-                title: '杭州安泰工艺品有限公司打样/接单流程走查',
-                startDate: '2025年7月7日 上午11:10',
-                endDate: '2025年7月7日 中午12:00',
-                date: '2025-07-07'
-            },
-            {
-                id: 'event-49',
-                title: '与安泰工艺品业务与生产双线午餐沟通',
-                startDate: '2025年7月7日 中午12:00',
-                endDate: '2025年7月7日 下午1:00',
-                date: '2025-07-07'
-            },
-            {
-                id: 'event-50',
-                title: '安泰工艺品项目推动关键干系人与决策链梳理',
-                startDate: '2025年7月7日 下午1:00',
-                endDate: '2025年7月7日 下午1:30',
-                date: '2025-07-07'
-            },
-            {
-                id: 'event-51',
-                title: '杭州辉创实业有限公司成本结构与库存策略访谈准备',
-                startDate: '2025年7月7日 下午1:30',
-                endDate: '2025年7月7日 下午2:00',
-                date: '2025-07-07'
-            },
-            {
-                id: 'event-52',
-                title: '杭州辉创实业有限公司产销协同与库存周转优化讨论',
-                startDate: '2025年7月7日 下午2:00',
-                endDate: '2025年7月7日 下午3:00',
-                date: '2025-07-07'
-            },
-            {
-                id: 'event-53',
-                title: '辉创实业业务蓝图确认与阶段性里程碑对表',
-                startDate: '2025年7月7日 下午3:00',
-                endDate: '2025年7月7日 下午4:00',
-                date: '2025-07-07'
-            },
-            {
-                id: 'event-54',
-                title: '今日客户价值评估与潜在标杆案例筛选（润展/安泰/辉创）',
-                startDate: '2025年7月7日 下午4:00',
-                endDate: '2025年7月7日 下午5:00',
-                date: '2025-07-07'
-            },
-            {
-                id: 'event-55',
-                title: '拜访周边制造业企业，收集共性需求线索',
-                startDate: '2025年7月7日 下午5:00',
-                endDate: '2025年7月7日 下午6:00',
-                date: '2025-07-07'
-            },
-            {
-                id: 'event-56',
-                title: '晚餐与机动沟通（安排后续技术评估会）',
-                startDate: '2025年7月7日 晚上6:00',
-                endDate: '2025年7月7日 晚上7:00',
-                date: '2025-07-07'
-            },
-            {
-                id: 'event-57',
-                title: '填写日报与会议纪要归档',
-                startDate: '2025年7月7日 晚上7:00',
-                endDate: '2025年7月7日 晚上8:00',
-                date: '2025-07-07'
-            },
-            {
-                id: 'event-58',
-                title: '日终复盘与明日三件事规划',
-                startDate: '2025年7月7日 晚上8:00',
-                endDate: '2025年7月7日 晚上9:00',
-                date: '2025-07-07'
-            },
-            {
-                id: 'event-59',
-                title: '杭州强勃包装制品有限公司客户结构与产品组合访谈',
-                startDate: '2025年7月10日 上午9:00',
-                endDate: '2025年7月10日 上午10:00',
-                date: '2025-07-10'
-            },
-            {
-                id: 'event-60',
-                title: '强勃包装生产节奏与瓶颈工序梳理',
-                startDate: '2025年7月10日 上午10:00',
-                endDate: '2025年7月10日 上午10:30',
-                date: '2025-07-10'
-            },
-            {
-                id: 'event-61',
-                title: '前往杭州尚逵机械设备有限公司途中准备演示方案',
-                startDate: '2025年7月10日 上午10:30',
-                endDate: '2025年7月10日 上午11:10',
-                date: '2025-07-10'
-            },
-            {
-                id: 'event-62',
-                title: '杭州尚逵机械设备有限公司售前售后流程与备件管理讨论',
-                startDate: '2025年7月10日 上午11:10',
-                endDate: '2025年7月10日 中午12:00',
-                date: '2025-07-10'
-            },
-            {
-                id: 'event-63',
-                title: '与尚逵机械销售/服务团队午餐沟通（确认系统诉求）',
-                startDate: '2025年7月10日 中午12:00',
-                endDate: '2025年7月10日 下午1:00',
-                date: '2025-07-10'
-            },
-            {
-                id: 'event-64',
-                title: '尚逵机械机会级别评估与内部立项建议草拟',
-                startDate: '2025年7月10日 下午1:00',
-                endDate: '2025年7月10日 下午1:30',
-                date: '2025-07-10'
-            },
-            {
-                id: 'event-65',
-                title: '浙江海明实业有限公司经营范围与生产布局快速了解',
-                startDate: '2025年7月10日 下午1:30',
-                endDate: '2025年7月10日 下午2:00',
-                date: '2025-07-10'
-            },
-            {
-                id: 'event-66',
-                title: '浙江海明实业有限公司多工厂协同与报表需求访谈',
-                startDate: '2025年7月10日 下午2:00',
-                endDate: '2025年7月10日 下午3:00',
-                date: '2025-07-10'
-            },
-            {
-                id: 'event-67',
-                title: '海明实业预算、合同与实施资源配置粗排',
-                startDate: '2025年7月10日 下午3:00',
-                endDate: '2025年7月10日 下午4:00',
-                date: '2025-07-10'
-            },
-            {
-                id: 'event-68',
-                title: '今日三家客户阶段性推进策略确定（强勃/尚逵/海明）',
-                startDate: '2025年7月10日 下午4:00',
-                endDate: '2025年7月10日 下午5:00',
-                date: '2025-07-10'
-            },
-            {
-                id: 'event-69',
-                title: '追踪历史沉睡线索，筛选可唤醒制造业客户',
-                startDate: '2025年7月10日 下午5:00',
-                endDate: '2025年7月10日 下午6:00',
-                date: '2025-07-10'
-            },
-            {
-                id: 'event-70',
-                title: '晚餐与机动沟通（视客户加开需求评审会）',
-                startDate: '2025年7月10日 晚上6:00',
-                endDate: '2025年7月10日 晚上7:00',
-                date: '2025-07-10'
-            },
-            {
-                id: 'event-71',
-                title: '填写日报与销售漏斗更新',
-                startDate: '2025年7月10日 晚上7:00',
-                endDate: '2025年7月10日 晚上8:00',
-                date: '2025-07-10'
-            },
-            {
-                id: 'event-72',
-                title: '日终复盘与明日三件事规划',
-                startDate: '2025年7月10日 晚上8:00',
-                endDate: '2025年7月10日 晚上9:00',
-                date: '2025-07-10'
-            },
-            {
-                id: 'event-73',
-                title: '杭州初芯服饰有限公司新品上市节奏与供应链协同讨论',
-                startDate: '2025年7月11日 上午9:00',
-                endDate: '2025年7月11日 上午10:00',
-                date: '2025-07-11'
-            },
-            {
-                id: 'event-74',
-                title: '初芯服饰门店补货逻辑与系统参数需求整理',
-                startDate: '2025年7月11日 上午10:00',
-                endDate: '2025年7月11日 上午10:30',
-                date: '2025-07-11'
-            },
-            {
-                id: 'event-75',
-                title: '前往浙江三锁实业有限公司途中复盘服饰行业共性需求',
-                startDate: '2025年7月11日 上午10:30',
-                endDate: '2025年7月11日 上午11:10',
-                date: '2025-07-11'
-            },
-            {
-                id: 'event-76',
-                title: '浙江三锁实业有限公司生产流程与质量管控现状访谈',
-                startDate: '2025年7月11日 上午11:10',
-                endDate: '2025年7月11日 中午12:00',
-                date: '2025-07-11'
-            },
-            {
-                id: 'event-77',
-                title: '与三锁实业生产/品质联合午餐沟通（锁定试点线）',
-                startDate: '2025年7月11日 中午12:00',
-                endDate: '2025年7月11日 下午1:00',
-                date: '2025-07-11'
-            },
-            {
-                id: 'event-78',
-                title: '三锁实业导入风险点与缓冲方案记录',
-                startDate: '2025年7月11日 下午1:00',
-                endDate: '2025年7月11日 下午1:30',
-                date: '2025-07-11'
-            },
-            {
-                id: 'event-79',
-                title: '杭州世佳医疗器械有限公司合规要求与仓储流程了解',
-                startDate: '2025年7月11日 下午1:30',
-                endDate: '2025年7月11日 下午2:00',
-                date: '2025-07-11'
-            },
-            {
-                id: 'event-80',
-                title: '杭州世佳医疗器械有限公司批号、追溯与质检流程讨论',
-                startDate: '2025年7月11日 下午2:00',
-                endDate: '2025年7月11日 下午3:00',
-                date: '2025-07-11'
-            },
-            {
-                id: 'event-81',
-                title: '世佳医疗器械项目实施路径与排期初步对表',
-                startDate: '2025年7月11日 下午3:00',
-                endDate: '2025年7月11日 下午4:00',
-                date: '2025-07-11'
-            },
-            {
-                id: 'event-82',
-                title: '今日客户分行业机会盘点（服饰/五金/医疗器械）',
-                startDate: '2025年7月11日 下午4:00',
-                endDate: '2025年7月11日 下午5:00',
-                date: '2025-07-11'
-            },
-            {
-                id: 'event-83',
-                title: '对接内部合规/医药行业顾问，确认方案可行性',
-                startDate: '2025年7月11日 下午5:00',
-                endDate: '2025年7月11日 下午6:00',
-                date: '2025-07-11'
-            },
-            {
-                id: 'event-84',
-                title: '晚餐与机动沟通',
-                startDate: '2025年7月11日 晚上6:00',
-                endDate: '2025年7月11日 晚上7:00',
-                date: '2025-07-11'
-            },
-            {
-                id: 'event-85',
-                title: '填写日报与关键客户画像更新',
-                startDate: '2025年7月11日 晚上7:00',
-                endDate: '2025年7月11日 晚上8:00',
-                date: '2025-07-11'
-            },
-            {
-                id: 'event-86',
-                title: '日终复盘与明日三件事规划',
-                startDate: '2025年7月11日 晚上8:00',
-                endDate: '2025年7月11日 晚上9:00',
-                date: '2025-07-11'
-            }
-        ];
+    currentYear = currentYear;
+    currentMonth = currentMonth;
 
-        let events = JSON.parse(localStorage.getItem('events')) || [];
-        const existingIds = new Set(events.map(e => e.id));
-        hardcodedEvents.forEach(he => {
-            if (!existingIds.has(he.id)) {
-                events.push(he);
-            }
-        });
-
-
-        localStorage.setItem('events', JSON.stringify(events));
-        localStorage.setItem('migration_done_v6', 'true');
-    }
     function bulkDeleteByDate(dateStr) {
         let events = getStoredEvents();
         const toDelete = events.filter(e => e.date === dateStr);
@@ -903,7 +359,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         } else {
             currentYear = 2025;
-            currentMonth = 6; // July
+            currentMonth = 11; // December
             initialDay = 2;
         }
 
@@ -1243,6 +699,107 @@ document.addEventListener('DOMContentLoaded', function () {
             item.className = 'schedule-item';
             item.setAttribute('draggable', 'true');
             item.dataset.eventId = event.id;
+
+            if (event.type === 'check-in-record') {
+                item.classList.add('check-in-record');
+                
+                item.addEventListener('click', (e) => {
+                     e.stopPropagation();
+                     window.location.href = `add_event.html?id=${event.id}&date=${dateStr}`;
+                });
+
+                const colorBar = document.createElement('div');
+                colorBar.className = 'color-bar';
+                colorBar.style.backgroundColor = event.color || '#4A90E2';
+                
+                const itemContent = document.createElement('div');
+                itemContent.className = 'item-content check-in-content';
+                const itemTitle = document.createElement('div');
+                itemTitle.className = 'item-title';
+                (function(){
+                    const isDefaultTitle = (t) => !t || t === '外勤打卡' || /^\d{1,2}:\d{2}任务$/.test(t) || t === '任务';
+                    let displayTitle = null;
+                    if (event.title && !isDefaultTitle(event.title)) {
+                        displayTitle = event.title;
+                    }
+                    if (!displayTitle) {
+                        let hm = null;
+                        const sD = parseScheduleDate(event.startDate);
+                        if (sD) hm = `${String(sD.getHours()).padStart(2,'0')}:${String(sD.getMinutes()).padStart(2,'0')}`;
+                        else if (event.checkInTime) hm = String(event.checkInTime);
+                        displayTitle = hm ? `${hm}任务` : (event.title || '任务');
+                    }
+                    itemTitle.textContent = displayTitle;
+                })();
+                itemContent.appendChild(itemTitle);
+                
+                const btnContainer = document.createElement('div');
+                btnContainer.className = 'check-in-buttons';
+                
+                const arriveBtn = document.createElement('div');
+                arriveBtn.className = `check-in-capsule arrive ${event.hasCheckIn ? 'active' : ''}`;
+                arriveBtn.textContent = '到场打卡';
+                arriveBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    window.location.href = `check_in.html?eventId=${event.id}&date=${dateStr}&type=check-in&source=schedule`;
+                });
+                
+                const leaveBtn = document.createElement('div');
+                leaveBtn.className = `check-in-capsule leave ${event.hasCheckOut ? 'active' : ''}`;
+                leaveBtn.textContent = '离场打卡';
+                leaveBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    window.location.href = `check_in.html?eventId=${event.id}&date=${dateStr}&type=check-out&source=schedule`;
+                });
+                
+                btnContainer.appendChild(arriveBtn);
+                btnContainer.appendChild(leaveBtn);
+                itemContent.appendChild(btnContainer);
+                
+            const itemTime = document.createElement('div');
+            itemTime.className = 'item-time';
+
+            let sDate = parseScheduleDate(event.startDate);
+            if (!sDate) {
+                const hm = String(event.checkInTime || '').split(':');
+                const yy = Number(dateStr.split('-')[0]);
+                const mm = Number(dateStr.split('-')[1]);
+                const dd = Number(dateStr.split('-')[2]);
+                const startObj = new Date(yy, mm - 1, dd, Number(hm[0] || 0), Number(hm[1] || 0));
+                const endObj = new Date(startObj.getTime() + 60 * 60 * 1000);
+                event.startDate = formatScheduleDate(startObj);
+                event.endDate = formatScheduleDate(endObj);
+                sDate = startObj;
+                const allEventsFixed = getStoredEvents();
+                const idxFix = allEventsFixed.findIndex(e => e.id === event.id);
+                if (idxFix > -1) {
+                    allEventsFixed[idxFix] = event;
+                    localStorage.setItem('events', JSON.stringify(allEventsFixed));
+                }
+            }
+            if (sDate) {
+                const st = document.createElement('div');
+                st.textContent = `${String(sDate.getHours()).padStart(2, '0')}:${String(sDate.getMinutes()).padStart(2, '0')}`;
+                itemTime.appendChild(st);
+            }
+            let eDate = parseScheduleDate(event.endDate);
+            if (!eDate && sDate) {
+                eDate = new Date(sDate.getTime() + 60 * 60 * 1000);
+            }
+            if (eDate) {
+                const et = document.createElement('div');
+                et.className = 'end-time';
+                et.textContent = `${String(eDate.getHours()).padStart(2, '0')}:${String(eDate.getMinutes()).padStart(2, '0')}`;
+                itemTime.appendChild(et);
+            }
+
+                item.appendChild(colorBar);
+                item.appendChild(itemContent);
+                item.appendChild(itemTime);
+                scheduleList.appendChild(item);
+                return;
+            }
+
             if (event.needsManual) { item.classList.add('conflict'); }
 
             if (event.id) {

@@ -48,6 +48,20 @@ header {
 }
 .excel-import-btn:hover { background-color: #25a26f; }
 
+.clock-in-btn {
+    background-color: #00bfff;
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+}
+.clock-in-btn:hover { background-color: #00a0d9; }
+
 .icon {
     text-decoration: none;
     color: #007aff;
@@ -187,27 +201,70 @@ hr {
     order: 2;
     display: flex;
     gap: 8px;
+    margin-left: auto;
 }
 
 .item-actions {
     order: 2;
     display: flex;
     gap: 8px;
+    margin-left: auto;
 }
 
 .check-in-btn, .check-out-btn {
-    background-color: #007aff;
     color: #fff;
-    padding: 5px 10px;
+    padding: 6px 12px;
     text-decoration: none;
-    border-radius: 12px;
-    font-size: 12px;
+    border-radius: 16px;
+    font-size: 14px;
+    font-weight: bold;
+}
+.check-in-btn { background-color: #007aff; }
+.check-out-btn { background-color: #007aff; }
+
+.check-in-btn.has-record { background-color: #4cd964; }
+.check-out-btn.has-record { background-color: #4cd964; }
+
+.schedule-item.check-in-record {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
 }
 
-.check-in-btn.has-record {
-    background-color: #4CAF50;
+.check-in-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-left: 0;
+    margin-right: 0;
 }
 
-.check-out-btn.has-record {
-    background-color: #4CAF50;
+.check-in-buttons {
+    display: flex;
+    gap: 10px;
+    margin-left: auto;
+}
+
+.check-in-capsule {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #fff;
+    background-color: #d1d1d6;
+    transition: background-color 0.2s;
+}
+
+.check-in-capsule.arrive.active {
+    background-color: #4cd964;
+}
+
+.check-in-capsule.leave {
+    background-color: #007aff;
+}
+
+.check-in-capsule.leave.active {
+    background-color: #4cd964;
 }

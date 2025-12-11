@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const cancelButton = document.querySelector('.cancel-btn');
 
     const urlParams = new URLSearchParams(window.location.search);
-    const eventId = urlParams.get('id');
+    let eventId = urlParams.get('id');
     const originDate = urlParams.get('date');
 
     function extractDate(dateString) {
@@ -199,12 +199,69 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const departButtonPage = document.getElementById('depart-button-page');
-    if (departButtonPage) {
-        departButtonPage.addEventListener('click', (e) => {
-            e.preventDefault(); // Prevent form submission
-            const date = extractDate(startDateInput.value);
-            window.location.href = `depart_options.html?date=${date}`;
+    const ctripBtn = document.getElementById('action-ctrip');
+    const didiBtn = document.getElementById('action-didi');
+    const privateBtn = document.getElementById('action-private');
+
+    function goto(url, idOverride) {
+        const date = extractDate(startDateInput.value);
+        const idToUse = idOverride || eventId;
+        const idPart = idToUse ? `id=${idToUse}&` : '';
+        window.location.href = `${url}?${idPart}date=${date}`;
+    }
+
+    function saveEventSilently() {
+        let events = JSON.parse(localStorage.getItem('events')) || [];
+        const eventData = {
+            title: eventTitleInput.value,
+            notes: eventNotesInput.value,
+            startDate: startDateInput.value,
+            endDate: endDateInput.value,
+            customerLevel: customerLevelInput.value,
+            hiddenNeeds: hiddenNeedsInput.value,
+            caseJudgment: caseJudgmentInput.value,
+            summary: summaryInput.value,
+            date: extractDate(startDateInput.value)
+        };
+        if (eventId) {
+            const eventIndex = events.findIndex(e => e.id === eventId);
+            if (eventIndex > -1) {
+                events[eventIndex] = { ...events[eventIndex], ...eventData };
+                eventData.id = events[eventIndex].id;
+            }
+        } else {
+            eventData.id = 'event-' + Date.now();
+            eventData.lockStart = true;
+            events.push(eventData);
+            eventId = eventData.id;
+        }
+        localStorage.setItem('events', JSON.stringify(events));
+        adjustAfterInsert(eventData);
+        return eventData;
+    }
+
+    if (ctripBtn) {
+        ctripBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const saved = saveEventSilently();
+            const idToUse = saved.id || eventId;
+            goto('ctrip_trip.html', idToUse);
+        });
+    }
+    if (didiBtn) {
+        didiBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const saved = saveEventSilently();
+            const idToUse = saved.id || eventId;
+            goto('didi_trip.html', idToUse);
+        });
+    }
+    if (privateBtn) {
+        privateBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const saved = saveEventSilently();
+            const idToUse = saved.id || eventId;
+            goto('private_car_trip.html', idToUse);
         });
     }
 
