@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>考勤观察</title>
+    <link rel="stylesheet" href="attendance_observation.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="index.html" class="back-link">&lt; 返回行事历</a>
+            <div id="role-display">登入主管: Manager</div>
+        </header>
+        <main>
+            <div class="button-group">
+                <button class="obs-btn btn-blue">部门业务打卡时间表</button>
+                <button class="obs-btn btn-green">部门顾问打卡时间表</button>
+                <button class="obs-btn btn-blue">部门业务项目进度表<br>(连结TB)</button>
+                <button class="obs-btn btn-green">部门顾问项目进度表<br>(连结TB)</button>
+            </div>
+        </main>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const roleDisplay = document.getElementById('role-display');
+            const currentUserRole = localStorage.getItem('currentUserRole') || 'Manager';
+            roleDisplay.textContent = `登入主管: ${currentUserRole}`;
+        });
+    </script>
+</body>
+</html>

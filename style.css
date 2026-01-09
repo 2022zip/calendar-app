@@ -21,19 +21,38 @@ header {
 
 .header-main {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
+    overflow-x: auto;
+    white-space: nowrap;
+    gap: 10px;
+    padding-bottom: 5px; /* Space for scrollbar if any */
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.header-main::-webkit-scrollbar {
+    display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.header-main {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
 }
 
 .date-selector .year {
     color: #ff3b30;
     font-weight: bold;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .header-actions {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
+    flex-shrink: 0;
 }
 
 .excel-import-btn {
@@ -41,24 +60,42 @@ header {
     color: #fff;
     border: none;
     border-radius: 20px;
-    padding: 6px 12px;
+    padding: 6px 10px;
     font-size: 14px;
     font-weight: bold;
     cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 .excel-import-btn:hover { background-color: #25a26f; }
+
+.attendance-btn {
+    background-color: #FFC107;
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    padding: 6px 10px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.attendance-btn:hover { background-color: #FFB300; }
 
 .clock-in-btn {
     background-color: #00bfff;
     color: #fff;
     border: none;
     border-radius: 20px;
-    padding: 6px 12px;
+    padding: 6px 10px;
     font-size: 14px;
     font-weight: bold;
     cursor: pointer;
     text-decoration: none;
     display: inline-block;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 .clock-in-btn:hover { background-color: #00a0d9; }
 

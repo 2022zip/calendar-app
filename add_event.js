@@ -42,11 +42,16 @@ document.addEventListener('DOMContentLoaded', function () {
             summaryInput.value = eventToEdit.summary || '';
         }
     } else if (originDate) {
-        const year = originDate.substring(0, 4);
-        const month = originDate.substring(5, 7);
-        const day = originDate.substring(8, 10);
-        startDateInput.value = `${year}年${month}月${day}日 08:30`;
-        endDateInput.value = `${year}年${month}月${day}日 08:40`;
+        const now = new Date();
+        const year = parseInt(originDate.substring(0, 4), 10);
+        const month = parseInt(originDate.substring(5, 7), 10) - 1;
+        const day = parseInt(originDate.substring(8, 10), 10);
+        
+        const startObj = new Date(year, month, day, now.getHours(), now.getMinutes());
+        const endObj = new Date(startObj.getTime() + 10 * 60000);
+        
+        startDateInput.value = formatDate(startObj);
+        endDateInput.value = formatDate(endObj);
     }
 
     deleteButton.addEventListener('click', function() {
