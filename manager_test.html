@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Manager Module Tests</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .pass { color: green; }
+        .fail { color: red; font-weight: bold; }
+        .summary { margin-top: 20px; font-size: 1.2em; }
+    </style>
+</head>
+<body>
+    <h1>Manager Module Unit Tests</h1>
+    <div id="results">Running tests...</div>
+
+    <!-- Mock localStorage if needed, but browser has it -->
+    <script src="manager_store.js"></script>
+    <script>
+        const results = document.getElementById('results');
+        let passed = 0;
+        let failed = 0;
+
+        function log(msg, isPass) {
+            const div = document.createElement('div');
+            div.textContent = (isPass ? '[PASS] ' : '[FAIL] ') + msg;
+            div.className = isPass ? 'pass' : 'fail';
+            results.appendChild(div);
+            if (isPass) passed++; else failed++;
+        }
+
+        function assert(condition, msg) {
+            log(msg, condition);
+        }
+
+        async function runTests() {
+            results.innerHTML = '';
+            localStorage.clear();
+            const store = new ManagerScheduleStore();
+
+            // Test 1: Initial State
+            assert(store.getEvents().length === 0, 'Initial events should be empty');
+
+            // Test 2: Add Event
+            const evt1 = {
+                title: 'Test Event 1',
+                startDate: '2025-12-01 10:00',
+                endDate: '2025-12-01 11:00',
+                date: '2025-12-01'
+            };
+            store.addEvent(evt1);
+            assert(store.getEvents().length === 1, 'Should have 1 event after add');
+            assert(store.getEvents()[0].title === 'Test Event 1', 'Event title matches');
+            assert(store.getEvents()[0].owner === 'manager', 'Default owner should be manager');
+
+            // Test 3: Update Event
+            const savedEvt = store.getEvents()[0];
+            savedEvt.title = 'Updated Title';
+            store.updateEvent(savedEvt);
+            assert(store.getEvents()[0].title === 'Updated Title', 'Event title updated');
+
+            // Test 4: Delete Event
+            store.deleteEvent(savedEvt.id);
+            assert(store.getEvents().length === 0, 'Should be empty after delete');
+
+            // Test 5: Conflict Resolution (Overlap)
+            localStorage.clear();
+            const evtA = {
+                id: 'A', title: 'A', startDate: '2025-12-01 10:00', endDate: '2025-12-01 11:00', date: '2025-12-01'
+            };
+            const evtB = {
+                id: 'B', title: 'B', startDate: '2025-12-01 10:30', endDate: '2025-12-01 11:30', date: '2025-12-01'
+            };
+            store.addEvent(evtA);
+            store.addEvent(evtB);
+            
+            // Should be auto-adjusted (B starts after A ends + buffer?)
+            // Logic: B starts at 10:30. A ends 11:00.
+            // If autoAdjust is true.
+            // A is kept. B should be moved to 11:00 + 5min buffer = 11:05.
+            const events = store.getEvents();
+            const newB = events.find(e => e.id.includes('B') || e.title === 'B');
+            
+            // Check if B was moved
+            assert(newB.startDate !== '2025-12-01 10:30', 'Conflict: Event B should be moved');
+            // Expected: 11:00 + 5m = 11:05
+            // Note: date formatting in store might be "2025-12-01 11:05"
+            // Let's check roughly
+            assert(newB.startDate.includes('11:05'), `Event B moved to ${newB.startDate} (Expected ~11:05)`);
+
+            // Test 6: Team Permission (Mock)
+            const team = store.getTeamMembers();
+            assert(team.length > 0, 'Should have team members');
+            assert(team[0].id === 'user1', 'User1 exists');
+
+            // Summary
+            const summary = document.createElement('div');
+            summary.className = 'summary';
+            summary.textContent = `Total: ${passed + failed}, Passed: ${passed}, Failed: ${failed}`;
+            results.appendChild(summary);
+        }
+
+        runTests();
+    </script>
+</body>
+</html>

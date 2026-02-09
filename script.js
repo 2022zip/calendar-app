@@ -5,6 +5,83 @@ document.addEventListener('DOMContentLoaded', function () {
     const monthDisplay = document.querySelector('.date-selector .month');
     const excelImportBtn = document.getElementById('excel-import-btn');
     const excelFileInput = document.getElementById('excel-file-input');
+    
+    // --- User Info & Logout ---
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        // Always show logout button for everyone (or handle in CSS)
+        logoutBtn.style.display = 'inline-block';
+        
+        logoutBtn.addEventListener('click', function() {
+            if (confirm('确定要登出吗？')) {
+                localStorage.removeItem('currentUser');
+                window.location.href = 'login.html';
+            }
+        });
+    }
+    
+    try {
+        const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        if (currentUser.roleName) {
+            // Apply Manager View if applicable
+            if (currentUser.role === 'manager') {
+                document.body.classList.add('manager-view');
+                
+                // Show Manager specific buttons
+                const deptBtn = document.getElementById('dept-schedule-btn');
+                const approvalBtn = document.getElementById('approval-btn');
+                const excelBtn = document.getElementById('excel-import-btn');
+                
+                if (deptBtn) {
+                    deptBtn.style.display = 'inline-block';
+                    deptBtn.addEventListener('click', function() {
+                        window.location.href = 'dept_report.html';
+                    });
+                }
+                if (approvalBtn) {
+                    approvalBtn.style.display = 'inline-block';
+                    approvalBtn.addEventListener('click', function() {
+                        window.location.href = 'approval.html';
+                    });
+                }
+                
+                // Change logout button text to '登出' (vertical or small box)
+                if (logoutBtn) {
+                    logoutBtn.innerHTML = '登<br>出'; // Vertical text
+                    logoutBtn.style.lineHeight = '1.1';
+                }
+            } else {
+                 // For non-manager, ensure standard buttons are shown/hidden
+                 const excelBtn = document.getElementById('excel-import-btn');
+                 if (excelBtn) excelBtn.style.display = 'inline-block';
+            }
+
+            // Create a small welcome message
+            const headerActions = document.querySelector('.header-actions');
+            if (headerActions) {
+                const userTag = document.createElement('span');
+                userTag.id = 'user-info-display'; // Add ID for CSS targeting
+                userTag.style.fontSize = '12px';
+                userTag.style.marginRight = '5px';
+                userTag.style.color = '#333';
+                // Format: "登入者: manager"
+                userTag.innerHTML = `登入者: <span style="color: #007aff;">${currentUser.username}</span>`;
+                
+                // In manager view, we want this appended to header-actions or body?
+                // The CSS will move it absolutely, so appending to header-actions is fine as long as header-actions is static or part of the relative container.
+                // Wait, if header-actions is absolute, putting it inside might constrain it.
+                // Better to put it in header-main or header directly?
+                // For now keep in header-actions but ensure we can move it out with CSS.
+                // Actually, if .header-actions has display:flex, absolute children are relative to it if it has position:relative.
+                // If I want to position it relative to the whole header, I might need to move it or set .header-actions to static/contents.
+                
+                headerActions.insertBefore(userTag, headerActions.firstChild);
+            }
+        }
+    } catch (e) {
+        console.error('Error displaying user info', e);
+    }
+
 // --- 一次性清空旧测试行程（避免旧测试档复活） ---
     if (!localStorage.getItem('events_cleared_v1')) {
         try {
@@ -660,7 +737,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 
                 const addEventBtn = document.getElementById('add-event-btn');
                 if (addEventBtn) {
-                    addEventBtn.href = `add_event.html?date=${formattedDate}`;
+                    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+                    if (currentUser.role === 'manager') {
+                        addEventBtn.href = `manager_add_event.html?date=${formattedDate}`;
+                    } else {
+                        addEventBtn.href = `add_event.html?date=${formattedDate}`;
+                    }
                 }
             });
 
@@ -671,6 +753,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function renderSchedule(day) {
         scheduleList.innerHTML = '';
         const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
         resolveConflictsForDate(dateStr);
         enforceAfter(dateStr, 'QWA', '测试用');
         const allEvents = getStoredEvents().filter(event => event.date === dateStr);

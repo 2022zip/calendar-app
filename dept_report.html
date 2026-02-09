@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>部門出勤表</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="dept_report.css">
+    <script src="dept_report.js"></script>
+</head>
+<body>
+    <div class="container report-page">
+        <!-- Header -->
+        <header class="report-header">
+            <h2 class="greeting">尊敬的管理者您好：</h2>
+            <a href="index.html" class="back-link">返回首页</a>
+        </header>
+
+        <!-- Stats Cards -->
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-value" id="avg-trip-days">5</div>
+                <div class="stat-label">下屬平均出差天數</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="avg-checkin-count">12</div>
+                <div class="stat-label">下屬平均应打卡次数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="abnormal-ratio">89%</div>
+                <div class="stat-label">异常打卡比例</div>
+            </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+            <button class="filter-tab">全部</button>
+            <button class="filter-tab active">本周周报</button>
+            <button class="filter-tab">本月报表</button>
+            <button class="filter-tab">历史数据</button>
+            <div class="filter-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+            </div>
+        </div>
+
+        <!-- Report Content -->
+        <div class="report-content">
+            <!-- Weekly Report -->
+            <div class="report-section" id="weekly-report">
+                <h3 class="section-title">本周报表</h3>
+                <div class="date-range">出差時間段: 12/01-12/07</div>
+                
+                <div class="user-list">
+                    <!-- User 01 -->
+                    <div class="user-card">
+                        <div class="user-name">User01</div>
+                        <div class="user-stats">
+                            <div class="stat-item">
+                                <div class="stat-label-box">出差天數</div>
+                                <div class="stat-value-box">5天</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label-box">应打卡次数</div>
+                                <div class="stat-value-box">35次</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label-box">异常打卡次数</div>
+                                <div class="stat-value-box">19次</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- User 02 -->
+                    <div class="user-card">
+                        <div class="user-name">User02</div>
+                        <div class="user-stats">
+                            <div class="stat-item">
+                                <div class="stat-label-box">出差天數</div>
+                                <div class="stat-value-box">4天</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label-box">应打卡次数</div>
+                                <div class="stat-value-box">40次</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label-box">异常打卡次数</div>
+                                <div class="stat-value-box">11次</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- User 03 -->
+                    <div class="user-card">
+                        <div class="user-name">User03</div>
+                        <div class="user-stats">
+                            <div class="stat-item">
+                                <div class="stat-label-box">出差天數</div>
+                                <div class="stat-value-box">5天</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label-box">应打卡次数</div>
+                                <div class="stat-value-box">25次</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label-box">异常打卡次数</div>
+                                <div class="stat-value-box">2次</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Monthly Report -->
+            <div class="report-section" id="monthly-report">
+                <h3 class="section-title">本月報表</h3>
+                <div class="date-range">出差時間段累計: 12/01-12/31</div>
+                
+                <div class="user-list">
+                    <!-- User 01 -->
+                    <div class="user-card">
+                        <div class="user-name">User01</div>
+                        <div class="user-stats">
+                            <div class="stat-item">
+                                <div class="stat-label-box">出差天數</div>
+                                <div class="stat-value-box">5天</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label-box">应打卡次数</div>
+                                <div class="stat-value-box">35次</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label-box">异常打卡次数</div>
+                                <div class="stat-value-box">19次</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- User 02 -->
+                    <div class="user-card">
+                        <div class="user-name">User02</div>
+                        <div class="user-stats">
+                            <div class="stat-item">
+                                <div class="stat-label-box">出差天數</div>
+                                <div class="stat-value-box">4天</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label-box">应打卡次数</div>
+                                <div class="stat-value-box">40次</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label-box">异常打卡次数</div>
+                                <div class="stat-value-box">11次</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- User 03 -->
+                    <div class="user-card">
+                        <div class="user-name">User03</div>
+                        <div class="user-stats">
+                            <div class="stat-item">
+                                <div class="stat-label-box">出差天數</div>
+                                <div class="stat-value-box">5天</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label-box">应打卡次数</div>
+                                <div class="stat-value-box">25次</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label-box">异常打卡次数</div>
+                                <div class="stat-value-box">2次</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

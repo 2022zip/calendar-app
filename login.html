@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统登入</title>
+    <link rel="stylesheet" href="login.css">
+</head>
+<body>
+    <div class="login-container">
+        <h2>系统登入</h2>
+        <form id="login-form">
+            <div class="form-group">
+                <label for="username">用户名</label>
+                <input type="text" id="username" name="username" placeholder="请输入用户名" required>
+            </div>
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input type="password" id="password" name="password" placeholder="请输入密码" required>
+            </div>
+            <div class="form-group">
+                <label for="role-display">角色</label>
+                <input type="text" id="role-display" readonly placeholder="输入用户名自动匹配角色">
+            </div>
+            <button type="submit">登入</button>
+        </form>
+        <div id="error-message" class="error-message"></div>
+        <div class="role-hint">
+            <p>可用测试账号:</p>
+            <ul>
+                <li><strong>admin</strong> - 系统管理员 (IT/运维)</li>
+                <li><strong>exec</strong> - 总经理/高管</li>
+                <li><strong>manager</strong> - 部门经理</li>
+                <li><strong>user</strong> - 一般用户</li>
+            </ul>
+        </div>
+    </div>
+    <script src="login.js"></script>
+</body>
+</html>
