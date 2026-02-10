@@ -16,7 +16,7 @@ html, body {
 
 header {
     position: relative;
-    height: 120px;
+    height: 150px;
     padding: 0;
     border-bottom: 1px solid #e5e5ea;
     background-color: #fff;
@@ -78,10 +78,11 @@ body:not(.manager-view) #logout-btn {
     white-space: nowrap;
 }
 
+/* Default positions for User View (Manager View overrides these in manager.css) */
 .excel-import-btn {
     position: absolute;
     top: 55px;
-    left: 210px; /* Adjusted position */
+    left: 210px;
     background-color: #2CB87D;
     color: #fff;
     border: none;
@@ -97,7 +98,7 @@ body:not(.manager-view) #logout-btn {
 .clock-in-btn {
     position: absolute;
     top: 55px;
-    left: 110px; /* Adjusted position */
+    left: 110px;
     background-color: #00bfff;
     color: #fff;
     border: none;
@@ -114,7 +115,7 @@ body:not(.manager-view) #logout-btn {
 
 .icon {
     text-decoration: none;
-    color: #000; /* Updated to black/grey based on image */
+    color: #000;
     font-size: 20px;
     z-index: 10;
 }
@@ -123,23 +124,31 @@ body:not(.manager-view) #logout-btn {
     position: absolute;
     top: 60px;
     right: 50px;
-    color: #8e8e93; /* Search icon often grey */
+    color: #8e8e93;
 }
 
 #add-event-btn {
     position: absolute;
     top: 60px;
     right: 15px;
-    color: #000; /* Plus icon often black */
+    color: #000;
 }
 
 .month-view {
-    padding: 8px 16px;
+    padding: 0;
+    position: static;
 }
 
 .month-view .month {
+    position: absolute;
+    top: 100px;
+    left: 15px;
     font-size: 32px;
     font-weight: bold;
+    color: #000;
+    margin: 0;
+    line-height: 1;
+    z-index: 10;
 }
 
 .calendar {
