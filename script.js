@@ -54,6 +54,12 @@ document.addEventListener('DOMContentLoaded', function () {
                  // For non-manager, ensure standard buttons are shown/hidden
                  const excelBtn = document.getElementById('excel-import-btn');
                  if (excelBtn) excelBtn.style.display = 'inline-block';
+                 
+                 // Also set logout button text for regular user
+                 if (logoutBtn) {
+                    logoutBtn.innerHTML = '登<br>出'; // Vertical text
+                    logoutBtn.style.lineHeight = '1.1';
+                }
             }
 
             // Create a small welcome message
