@@ -207,97 +207,141 @@ hr {
     background-color: #fff;
 }
 
-.schedule-item {
-    display: flex;
-    align-items: center;
-    padding: 12px 16px;
-    border-bottom: 1px solid #e5e5ea;
-    position: relative;
-    padding-left: 24px;
-}
+/* 日程列表项容器：固定高度，相对定位 */ 
+ .schedule-item { 
+   display: block; 
+   position: relative; 
+   height: 80px; /* 固定高度 */ 
+   border-bottom: 1px solid #e5e5ea; 
+   box-sizing: border-box; 
+   padding: 0; 
+   overflow: hidden; 
+ } 
+ 
+ /* 左侧蓝色竖条：绝对定位 */ 
+ .color-bar { 
+   position: absolute; 
+   left: 16px; 
+   top: 15px; 
+   bottom: 15px; 
+   width: 4px; 
+   background-color: #4A90E2; 
+   border-radius: 2px; 
+ } 
+ 
+ /* 公司名称/内容：绝对定位，限制宽度 */ 
+.item-content { 
+  position: absolute; 
+  left: 30px; 
+  width: 190px; /* 恢复固定宽度，防止覆盖按钮 (230-30=200, 留10px间隙) */
+  right: auto;
+  top: 50%; 
+  transform: translateY(-50%); 
+  padding: 0; 
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+} 
 
-.schedule-item::before {
-    content: '';
+/* 标题文本：允许换行 */ 
+.item-title { 
+  font-size: 16px; 
+  color: #111; 
+  white-space: normal; /* 允许换行 */
+  line-height: 1.2;
+  max-height: 38px;    /* 限制高度 */
+  overflow: hidden; 
+  text-overflow: ellipsis; 
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+} 
+ 
+ /* 按钮组容器：绝对定位，固定在左侧 230px 处 (图二位置) */ 
+.item-actions { 
+  position: absolute; 
+  left: 230px; /* 恢复图二的左对齐 */ 
+  right: auto;
+  top: 50%; 
+  transform: translateY(-50%); 
+  display: flex; 
+  gap: 10px; 
+  margin: 0; 
+  z-index: 5; 
+} 
+ 
+  
+ 
+ /* 时间显示：绝对定位在最右侧 */ 
+ .item-time { 
+   position: absolute; 
+   right: 16px; 
+   top: 50%; 
+   transform: translateY(-50%); 
+   display: flex; 
+   flex-direction: column; 
+   align-items: flex-end; 
+   color: #8e8e93; 
+   font-size: 14px; 
+   z-index: 5; 
+ }
+
+.conflict-label {
     position: absolute;
-    left: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 4px;
-    height: 80%;
-    background-color: #4A90E2;
-    border-radius: 2px;
-}
-
-.schedule-item.conflict {
-    background-color: #fff5f5;
-}
-
-.schedule-item.conflict::before {
-    background-color: #FF3B30;
-}
-
-.color-bar {
-    width: 4px;
-    height: 100%;
-    margin-right: 12px;
-    background-color: #4A90E2;
-}
-
-.item-content {
-    flex: 1;
-    order: 1;
-    order: 1;
-}
-
-.item-title {
-    font-size: 16px;
-    color: #111;
-}
-
-.item-notes {
+    top: 8px;
+    left: 30px;
     font-size: 12px;
-    color: #8e8e93;
-    margin-top: 4px;
-    white-space: pre-wrap;
-}
-
-.item-time {
-    order: 3;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    color: #8e8e93;
-    font-size: 12px;
-    min-width: 64px;
-}
-
-.item-actions {
-    order: 2;
-    display: flex;
-    gap: 8px;
-    margin-left: auto;
-}
-
-.item-actions {
-    order: 2;
-    display: flex;
-    gap: 8px;
-    margin-left: auto;
-}
-
-.check-in-btn, .check-out-btn {
-    color: #fff;
-    padding: 6px 12px;
-    text-decoration: none;
-    border-radius: 16px;
-    font-size: 14px;
+    color: #FF3B30;
     font-weight: bold;
+    line-height: 1;
+    z-index: 10;
 }
-.check-in-btn { background-color: #007aff; }
-.check-out-btn { background-color: #007aff; }
 
-.check-in-btn.has-record { background-color: #4cd964; }
-.check-out-btn.has-record { background-color: #4cd964; }
+/* End of file - Custom Button Styles */
+/* ✅ 强制把按钮固定为横向胶囊，不允许被压窄/竖排（放在 CSS 最后） */ 
+.schedule-item .item-actions .check-in-btn, 
+.schedule-item .item-actions .check-out-btn, 
+.schedule-item .item-actions button.check-in-btn, 
+.schedule-item .item-actions button.check-out-btn, 
+.schedule-item .item-actions a.check-in-btn, 
+.schedule-item .item-actions a.check-out-btn { 
+  display: inline-flex !important; 
+  align-items: center !important; 
+  justify-content: center !important; 
+
+  /* 关键：不允许换行 + 不允许按字断行 */ 
+  white-space: nowrap !important; 
+  word-break: keep-all !important; 
+  overflow-wrap: normal !important; 
+
+  /* 关键：不允许被压缩成窄条 */ 
+  width: auto !important; 
+  min-width: 68px !important;   /* 缩小最小宽度 */ 
+  flex: 0 0 auto !important; 
+  flex-shrink: 0 !important; 
+
+  padding: 4px 8px !important;  /* 缩小内边距 */
+  border-radius: 20px !important; 
+  font-size: 13px !important;   /* 缩小字体 */
+  font-weight: 700 !important; 
+  line-height: 1 !important; 
+
+  color: #fff !important; 
+  text-decoration: none !important; 
+  border: 0 !important; 
+} 
+
+/* 默认：蓝色 */ 
+.schedule-item .item-actions .check-in-btn, 
+.schedule-item .item-actions .check-out-btn { 
+  background-color: #007aff !important; 
+} 
+
+/* 完成态：变绿（只改颜色） */ 
+.schedule-item .item-actions .check-in-btn.is-done, 
+.schedule-item .item-actions .check-out-btn.is-done { 
+  background-color: #2ecc71 !important; 
+}
 
 .schedule-item.check-in-record {
     display: flex;
@@ -318,6 +362,39 @@ hr {
     display: flex;
     gap: 10px;
     margin-left: auto;
+}
+
+/* ✅ 修复：check-in-record 这套按钮也必须防竖排、防压缩 */ 
+.schedule-item .check-in-capsule { 
+  display: inline-flex; 
+  align-items: center; 
+  justify-content: center; 
+
+  white-space: nowrap; 
+  word-break: keep-all; 
+  overflow-wrap: normal; 
+
+  width: auto; 
+  min-width: 68px; 
+  flex: 0 0 auto; 
+  flex-shrink: 0; 
+
+  padding: 4px 8px; 
+  border-radius: 20px; 
+  line-height: 1; 
+  font-size: 13px;
+  font-weight: 700;
+} 
+
+/* ✅ 修复：check-in-record 不要让 item-content 固定 180px 挤按钮 */ 
+.schedule-item.check-in-record .item-content { 
+  width: auto;
+  right: 220px;  /* 统一调整右侧间距 */
+}
+
+/* 补充：让未激活的 Arrive 按钮显示灰色 (pending 状态) */
+.schedule-item .item-actions .check-in-btn.pending {
+    background-color: #d1d1d6 !important;
 }
 
 .check-in-capsule {

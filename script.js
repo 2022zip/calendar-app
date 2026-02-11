@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
         if (currentUser.roleName) {
             // Apply Manager View if applicable
-            if (currentUser.role === 'manager') {
+            if (currentUser.role === 'manager' || currentUser.role === 'executive') {
                 document.body.classList.add('manager-view');
                 
                 // Show Manager specific buttons
@@ -538,11 +538,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function resolveConflictsForDate(dateStr) {
         const pref = getConflictPref();
-        if (!pref.autoAdjust) return { adjusted: 0, unresolved: 0 };
         const all = getStoredEvents();
         const dayEvents = all.filter(e => e.date === dateStr);
         if (dayEvents.length < 2) return { adjusted: 0, unresolved: 0 };
-        const bufferMs = 5 * 60 * 1000;
+        
         dayEvents.sort((a, b) => {
             const sa = parseScheduleDate(a.startDate);
             const sb = parseScheduleDate(b.startDate);
@@ -553,56 +552,91 @@ document.addEventListener('DOMContentLoaded', function () {
                 const idb = Number(String(b.id || '').replace('event-', '')) || 0;
                 return idb - ida;
             }
-            const ida = Number(String(a.id || '').replace('event-', '')) || 0;
-            const idb = Number(String(b.id || '').replace('event-', '')) || 0;
-            return ida - idb;
+            return 0;
         });
-        let lastEnd = null;
-        let adjusted = 0;
-        let unresolved = 0;
+
+        // Identify clusters of overlapping events
+        let clusters = [];
+        let currentCluster = [];
+        let clusterEnd = null;
+
         for (let i = 0; i < dayEvents.length; i++) {
             const e = dayEvents[i];
             const start = parseScheduleDate(e.startDate);
             const end = parseScheduleDate(e.endDate);
             if (!start || !end) continue;
-            const minStartWithBuffer = lastEnd ? new Date(lastEnd.getTime() + bufferMs) : null;
-            if (lastEnd && start < lastEnd) {
-                const durationMs = end.getTime() - start.getTime();
-                const boundaryEnd = new Date(dateStr);
-                boundaryEnd.setHours(23, 59, 0, 0);
-                if (e.lockStart) {
-                    delete e.needsManual;
-                    lastEnd = new Date(Math.max(lastEnd.getTime(), end.getTime()));
+
+            if (currentCluster.length === 0) {
+                currentCluster.push(e);
+                clusterEnd = end;
+            } else {
+                if (start < clusterEnd) {
+                    // Overlap
+                    currentCluster.push(e);
+                    if (end > clusterEnd) clusterEnd = end;
                 } else {
-                    const s = minStartWithBuffer;
-                    const t = new Date(s.getTime() + durationMs);
-                    if (t <= boundaryEnd) {
-                        e.startDate = formatScheduleDate(s);
-                        e.endDate = formatScheduleDate(t);
-                        delete e.needsManual;
-                        adjusted++;
-                        lastEnd = new Date(t.getTime());
+                    // No overlap, close current cluster
+                    clusters.push(currentCluster);
+                    currentCluster = [e];
+                    clusterEnd = end;
+                }
+            }
+        }
+        if (currentCluster.length > 0) clusters.push(currentCluster);
+
+        let hasChanges = false;
+        let unresolved = 0;
+
+        // Process clusters
+        for (const cluster of clusters) {
+            if (cluster.length > 1) {
+                // Sort cluster by lastModified descending to find the "latest" one
+                // Events without lastModified are treated as older (0)
+                const sortedByMod = [...cluster].sort((a, b) => {
+                    const tA = a.lastModified || 0;
+                    const tB = b.lastModified || 0;
+                    return tB - tA;
+                });
+                
+                // The first one is the latest modified (User's active adjustment)
+                // Exempt it from conflict marking
+                const latest = sortedByMod[0];
+                
+                for (const e of cluster) {
+                    if (e.id === latest.id) {
+                         // This is the user-adjusted event, it is "correct"
+                         if (e.needsManual) {
+                             delete e.needsManual;
+                             hasChanges = true;
+                         }
                     } else {
-                        e.needsManual = true;
+                        // This event conflicts with the user's latest adjustment
+                        if (!e.needsManual) {
+                            e.needsManual = true;
+                            hasChanges = true;
+                        }
                         unresolved++;
-                        lastEnd = new Date(Math.max(lastEnd.getTime(), end.getTime()));
                     }
                 }
             } else {
-                lastEnd = new Date(end.getTime());
-                delete e.needsManual;
+                // No conflict
+                const e = cluster[0];
+                if (e.needsManual) {
+                    delete e.needsManual;
+                    hasChanges = true;
+                }
             }
         }
-        if (adjusted > 0 || unresolved > 0) {
+
+        if (hasChanges) {
             for (let i = 0; i < dayEvents.length; i++) {
                 const idx = all.findIndex(ev => ev.id === dayEvents[i].id);
                 if (idx > -1) all[idx] = dayEvents[i];
             }
             localStorage.setItem('events', JSON.stringify(all));
-            if (adjusted > 0) tryNotify('系统通知', `已自动调整${adjusted}项冲突日程`);
-            if (unresolved > 0) tryNotify('系统通知', `${unresolved}项冲突需人工处理`);
         }
-        return { adjusted, unresolved };
+        
+        return { adjusted: 0, unresolved };
     }
     function adjustPairByTitles(dateStr, titleA, titleB) {
         const bufferMs = 5 * 60 * 1000;
@@ -744,7 +778,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const addEventBtn = document.getElementById('add-event-btn');
                 if (addEventBtn) {
                     const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-                    if (currentUser.role === 'manager') {
+                    if (currentUser.role === 'manager' || currentUser.role === 'executive') {
                         addEventBtn.href = `manager_add_event.html?date=${formattedDate}`;
                     } else {
                         addEventBtn.href = `add_event.html?date=${formattedDate}`;
@@ -761,7 +795,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
         resolveConflictsForDate(dateStr);
-        enforceAfter(dateStr, 'QWA', '测试用');
+        // enforceAfter(dateStr, 'QWA', '测试用'); // Removed as per user request to disable auto-postponement
         const allEvents = getStoredEvents().filter(event => event.date === dateStr);
 
         if (allEvents.length === 0) {
@@ -822,28 +856,41 @@ document.addEventListener('DOMContentLoaded', function () {
                 })();
                 itemContent.appendChild(itemTitle);
                 
-                const btnContainer = document.createElement('div');
-                btnContainer.className = 'check-in-buttons';
+                // Refactored to use standard .item-actions structure
+                const itemActions = document.createElement('div');
+                itemActions.className = 'item-actions';
                 
-                const arriveBtn = document.createElement('div');
-                arriveBtn.className = `check-in-capsule arrive ${event.hasCheckIn ? 'active' : ''}`;
+                const arriveBtn = document.createElement('a');
+                arriveBtn.className = 'check-in-btn';
                 arriveBtn.textContent = '到场打卡';
+                if (event.hasCheckIn) {
+                    arriveBtn.classList.add('is-done');
+                } else {
+                    arriveBtn.classList.add('pending'); // Make it gray if not done
+                }
                 arriveBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     window.location.href = `check_in.html?eventId=${event.id}&date=${dateStr}&type=check-in&source=schedule`;
                 });
                 
-                const leaveBtn = document.createElement('div');
-                leaveBtn.className = `check-in-capsule leave ${event.hasCheckOut ? 'active' : ''}`;
+                const leaveBtn = document.createElement('a');
+                leaveBtn.className = 'check-out-btn'; // Use check-out-btn for semantics, style is same as check-in-btn
                 leaveBtn.textContent = '离场打卡';
+                if (event.hasCheckOut) {
+                    leaveBtn.classList.add('is-done');
+                }
                 leaveBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     window.location.href = `check_in.html?eventId=${event.id}&date=${dateStr}&type=check-out&source=schedule`;
                 });
                 
-                btnContainer.appendChild(arriveBtn);
-                btnContainer.appendChild(leaveBtn);
-                itemContent.appendChild(btnContainer);
+                itemActions.appendChild(arriveBtn);
+                itemActions.appendChild(leaveBtn);
+                item.appendChild(itemActions);
+                
+                itemContent.appendChild(itemTitle); // Ensure title is in content
+                // Note: itemContent was already appended with title above.
+                // We don't append buttons to itemContent anymore, they are in itemActions (sibling)
                 
             const itemTime = document.createElement('div');
             itemTime.className = 'item-time';
@@ -884,7 +931,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 item.appendChild(colorBar);
                 item.appendChild(itemContent);
-                item.appendChild(itemTime);
+                item.appendChild(itemTime); // itemActions is absolutely positioned, so order in DOM doesn't matter much for it, but let's append it to item
+                item.appendChild(itemActions); // Append actions to item
+                
                 scheduleList.appendChild(item);
                 return;
             }
@@ -908,15 +957,18 @@ document.addEventListener('DOMContentLoaded', function () {
             const itemContent = document.createElement('div');
             itemContent.className = 'item-content';
 
+            // Conflict Label (Figure 2 style: absolute position)
+            if (event.needsManual) {
+                const conflictLabel = document.createElement('div');
+                conflictLabel.className = 'conflict-label';
+                conflictLabel.textContent = '冲突';
+                itemContent.appendChild(conflictLabel);
+                item.classList.add('has-conflict');
+            }
+
             const itemTitle = document.createElement('div');
             itemTitle.className = 'item-title';
             itemTitle.textContent = event.title;
-            if (event.needsManual) {
-                const badge = document.createElement('span');
-                badge.textContent = '冲突';
-                badge.style.cssText = 'margin-left:8px;color:#FF3B30;font-size:12px;';
-                itemTitle.appendChild(badge);
-            }
             itemContent.appendChild(itemTitle);
 
             if (event.notes) {
@@ -948,9 +1000,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
             item.appendChild(colorBar);
             item.appendChild(itemContent);
-
-
-
             item.appendChild(itemTime);
 
             const shouldShowButtons = (() => {
@@ -965,7 +1014,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 checkInButton.textContent = '到场打卡';
                 checkInButton.classList.add('check-in-btn');
                 if (hasValidCheckIn(event.id)) {
-                    checkInButton.classList.add('has-record');
+                    checkInButton.classList.add('is-done');
                 }
                 item.appendChild(checkInButton);
 
@@ -974,7 +1023,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 checkOutButton.textContent = '离场打卡';
                 checkOutButton.classList.add('check-out-btn');
                 if (hasValidCheckOut(event.id)) {
-                    checkOutButton.classList.add('has-record');
+                    checkOutButton.classList.add('is-done');
                 }
                 item.appendChild(checkOutButton);
             }

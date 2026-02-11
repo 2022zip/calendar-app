@@ -28,6 +28,15 @@
     font-size: 14px;
 }
 
+/* Page Title */
+.page-title {
+    text-align: center;
+    font-size: 24px;
+    font-weight: bold;
+    color: #000;
+    margin: -10px 0 20px 0;
+}
+
 /* Stats Cards */
 .stats-container {
     display: flex;
@@ -53,8 +62,9 @@
 }
 
 .stat-label {
-    font-size: 12px;
+    font-size: 10px;
     color: #666;
+    line-height: 1.2;
 }
 
 /* Filter Bar */
@@ -151,6 +161,12 @@
     cursor: pointer;
 }
 
+.checkbox-wrapper input[type="checkbox"]:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+    border-color: #999;
+}
+
 /* Approval Card */
 .approval-card {
     flex: 1;
@@ -161,14 +177,18 @@
 }
 
 .card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 10px;
+    position: relative;
+    height: 70px; /* Give it enough height */
+    padding: 0; /* Remove padding as we position absolutely */
     border-bottom: 1px solid #eee;
+    box-sizing: border-box;
 }
 
 .user-info {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -185,8 +205,26 @@
 }
 
 .action-buttons {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
     display: flex;
     gap: 8px;
+}
+
+.status-badge {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: #00c853;
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: bold;
+    display: inline-block;
 }
 
 .approve-btn {
@@ -215,44 +253,123 @@
 }
 
 .card-details {
-    display: flex;
+    position: relative;
+    height: 100px; /* Fixed height for 2 rows */
     border-top: 1px solid #000;
+    box-sizing: border-box;
+}
+
+.detail-row {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 50%;
+    border-bottom: 1px solid #000;
+    box-sizing: border-box;
+}
+
+.detail-row:nth-child(1) {
+    top: 0;
+}
+
+.detail-row:nth-child(2) {
+    top: 50%;
+    border-bottom: none;
 }
 
 .detail-item {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: space-between; /* To separate label and value? No, image shows boxed layout */
-    /* Image shows table-like cells */
+    position: absolute;
+    top: 0;
+    height: 100%;
+    width: 33.333%;
     border-right: 1px solid #000;
+    box-sizing: border-box;
     padding: 0;
-    flex-direction: row;
 }
 
-.detail-item:last-child {
+.detail-item:nth-child(1) {
+    left: 0;
+}
+
+.detail-item:nth-child(2) {
+    left: 33.333%;
+}
+
+.detail-item:nth-child(3) {
+    left: 66.666%;
     border-right: none;
 }
 
+.detail-item.spacer {
+    background-color: #fff;
+}
+
 .detail-item .label {
-    background-color: #e0f7fa; /* Light cyan/blue */
-    padding: 8px 4px;
-    font-size: 11px;
+    position: absolute;
+    left: 0;
+    top: 0;
     width: 50%;
+    height: 100%;
+    background-color: #e0f7fa;
+    padding: 0 4px;
+    font-size: 11px;
     text-align: center;
     border-right: 1px solid #000;
     display: flex;
     align-items: center;
     justify-content: center;
+    box-sizing: border-box;
 }
 
 .detail-item .value {
-    padding: 8px 4px;
-    font-size: 11px;
+    position: absolute;
+    left: 50%;
+    top: 0;
     width: 50%;
+    height: 100%;
+    padding: 0 4px;
+    font-size: 11px;
     text-align: center;
     display: flex;
     align-items: center;
     justify-content: center;
     background-color: #fff;
+    box-sizing: border-box;
+}
+
+/* Floating Action Button */
+.fab-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+    padding-bottom: 20px;
+    display: none; /* Hidden by default */
+}
+
+.fab-btn {
+    background-color: #00c853; /* Green */
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 10px 40px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.fab-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+/* Status Badge */
+.status-badge {
+    background-color: #00c853;
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: bold;
+    display: inline-block;
 }

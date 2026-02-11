@@ -124,59 +124,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function adjustAfterInsert(newEvent) {
-        const bufferMs = 5 * 60 * 1000;
-        let events = JSON.parse(localStorage.getItem('events')) || [];
-        const dateStr = newEvent.date;
-        const dayEvents = events.filter(e => e.date === dateStr);
-        if (dayEvents.length < 2) return;
-        dayEvents.sort((a, b) => {
-            const sa = parseDate(a.startDate);
-            const sb = parseDate(b.startDate);
-            if (sa && sb) {
-                const diff = sa - sb;
-                if (diff !== 0) return diff;
-                if (a.id === newEvent.id) return -1;
-                if (b.id === newEvent.id) return 1;
-                return 0;
-            }
-            return 0;
-        });
-        const idx = dayEvents.findIndex(e => e.id === newEvent.id);
-        if (idx === -1) return;
-        const durations = dayEvents.map(e => {
-            const s = parseDate(e.startDate);
-            const t = parseDate(e.endDate);
-            return s && t ? (t.getTime() - s.getTime()) : 0;
-        });
-        
-        for (let i = idx + 1; i < dayEvents.length; i++) {
-            const prevEnd = parseDate(dayEvents[i - 1].endDate);
-            if (!prevEnd) continue;
-            const s = parseDate(dayEvents[i].startDate);
-            const dur = durations[i];
-            const minStart = new Date(prevEnd.getTime() + bufferMs);
-            const useStart = s && s > minStart ? s : minStart;
-            const useEnd = new Date(useStart.getTime() + dur);
-            const boundaryEnd = new Date(dateStr);
-            boundaryEnd.setHours(23, 59, 0, 0);
-            if (dayEvents[i].allDay || dayEvents[i].fixedTime) {
-                dayEvents[i].needsManual = true;
-                continue;
-            }
-            dayEvents[i].startDate = formatScheduleDate(useStart);
-            dayEvents[i].endDate = formatScheduleDate(useEnd);
-            delete dayEvents[i].needsManual;
-            if (useEnd > boundaryEnd) {
-                const nextDay = new Date(boundaryEnd.getTime() + 60 * 1000);
-                const nextDateStr = `${nextDay.getFullYear()}-${String(nextDay.getMonth() + 1).padStart(2, '0')}-${String(nextDay.getDate()).padStart(2, '0')}`;
-                dayEvents[i].date = nextDateStr;
-            }
-        }
-        for (let i = 0; i < dayEvents.length; i++) {
-            const idxAll = events.findIndex(e => e.id === dayEvents[i].id);
-            if (idxAll > -1) events[idxAll] = dayEvents[i];
-        }
-        localStorage.setItem('events', JSON.stringify(events));
+        // Shifting logic removed as per user request.
+        // Conflicts will be detected and marked by script.js on the main page.
+        return;
     }
 
     function formatDate(date) {
@@ -221,7 +171,8 @@ document.addEventListener('DOMContentLoaded', function () {
             hiddenNeeds: hiddenNeedsInput.value,
             caseJudgment: caseJudgmentInput.value,
             summary: summaryInput.value,
-            date: extractDate(startDateInput.value)
+            date: extractDate(startDateInput.value),
+            lastModified: Date.now()
         };
         if (eventId) {
             const eventIndex = events.findIndex(e => e.id === eventId);
@@ -279,7 +230,8 @@ document.addEventListener('DOMContentLoaded', function () {
             hiddenNeeds: hiddenNeedsInput.value,
             caseJudgment: caseJudgmentInput.value,
             summary: summaryInput.value,
-            date: extractDate(startDateInput.value)
+            date: extractDate(startDateInput.value),
+            lastModified: Date.now()
         };
 
         if (eventId) {

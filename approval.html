@@ -15,6 +15,7 @@
             <h2 class="greeting">尊敬的管理者您好：</h2>
             <a href="index.html" class="back-link">返回首页</a>
         </header>
+        <h1 class="page-title">审批表</h1>
 
         <!-- Stats Cards -->
         <div class="stats-container">
@@ -27,21 +28,18 @@
                 <div class="stat-label">本月已审</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">89%</div>
-                <div class="stat-label">通过率</div>
+                <div class="stat-value">0%</div>
+                <div class="stat-label">部门异常打卡比率</div>
             </div>
         </div>
 
         <!-- Filter Bar -->
         <div class="filter-bar">
             <button class="batch-select-btn">批量<br>选择</button>
-            <button class="back-approval-btn">返回<br>审批</button>
             <div class="filter-tabs">
                 <button class="filter-tab active">全部</button>
                 <button class="filter-tab">待审批</button>
                 <button class="filter-tab">已批准</button>
-                <button class="filter-tab">已拒绝</button>
-                <button class="filter-tab">本月报表</button>
             </div>
             <div class="filter-icon">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -64,23 +62,32 @@
                             <span class="user-name">User01</span>
                             <span class="date-range">出差時間段: 12/01-12/07</span>
                         </div>
-                        <div class="action-buttons">
-                            <button class="approve-btn">通过</button>
-                            <button class="reject-btn">拒绝</button>
-                        </div>
                     </div>
                     <div class="card-details">
-                        <div class="detail-item">
-                            <span class="label">出差天數</span>
-                            <span class="value">5天</span>
+                        <div class="detail-row">
+                            <div class="detail-item">
+                                <span class="label">本周应出<br>差天数</span>
+                                <span class="value">5天</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">实际<br>出差天数</span>
+                                <span class="value">4天</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">异常<br>出差天数</span>
+                                <span class="value">1天</span>
+                            </div>
                         </div>
-                        <div class="detail-item">
-                            <span class="label">應打卡次數</span>
-                            <span class="value">35次</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="label">異常打卡次數</span>
-                            <span class="value">19次</span>
+                        <div class="detail-row">
+                            <div class="detail-item spacer"></div>
+                            <div class="detail-item">
+                                <span class="label">应打卡次数</span>
+                                <span class="value">35次</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">异常打卡次数</span>
+                                <span class="value">19次</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -98,23 +105,32 @@
                             <span class="user-name">User02</span>
                             <span class="date-range">出差時間段: 12/01-12/07</span>
                         </div>
-                        <div class="action-buttons">
-                            <button class="approve-btn">通过</button>
-                            <button class="reject-btn">拒绝</button>
-                        </div>
                     </div>
                     <div class="card-details">
-                        <div class="detail-item">
-                            <span class="label">出差天數</span>
-                            <span class="value">4天</span>
+                        <div class="detail-row">
+                            <div class="detail-item">
+                                <span class="label">本周应出<br>差天数</span>
+                                <span class="value">5天</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">实际<br>出差天数</span>
+                                <span class="value">4天</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">异常<br>出差天数</span>
+                                <span class="value">1天</span>
+                            </div>
                         </div>
-                        <div class="detail-item">
-                            <span class="label">應打卡次數</span>
-                            <span class="value">40次</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="label">異常打卡次數</span>
-                            <span class="value">11次</span>
+                        <div class="detail-row">
+                            <div class="detail-item spacer"></div>
+                            <div class="detail-item">
+                                <span class="label">应打卡次数</span>
+                                <span class="value">40次</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">异常打卡次数</span>
+                                <span class="value">11次</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -132,27 +148,41 @@
                             <span class="user-name">User03</span>
                             <span class="date-range">出差時間段: 12/01-12/07</span>
                         </div>
-                        <div class="action-buttons">
-                            <button class="approve-btn">通过</button>
-                            <button class="reject-btn">拒绝</button>
-                        </div>
                     </div>
                     <div class="card-details">
-                        <div class="detail-item">
-                            <span class="label">出差天數</span>
-                            <span class="value">5天</span>
+                        <div class="detail-row">
+                            <div class="detail-item">
+                                <span class="label">本周应出<br>差天数</span>
+                                <span class="value">5天</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">实际<br>出差天数</span>
+                                <span class="value">5天</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">异常<br>出差天数</span>
+                                <span class="value">0天</span>
+                            </div>
                         </div>
-                        <div class="detail-item">
-                            <span class="label">應打卡次數</span>
-                            <span class="value">25次</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="label">異常打卡次數</span>
-                            <span class="value">2次</span>
+                        <div class="detail-row">
+                            <div class="detail-item spacer"></div>
+                            <div class="detail-item">
+                                <span class="label">应打卡次数</span>
+                                <span class="value">25次</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">异常打卡次数</span>
+                                <span class="value">2次</span>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Floating Action Button -->
+        <div class="fab-container">
+            <button class="fab-btn batch-approve-btn">已批阅</button>
         </div>
     </div>
 </body>
